@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block titulo %}Novo perfil · JobFit{% endblock %}
+{% block conteudo %}
+<h1>Novo perfil</h1>
+<form method="post" action="/perfis">
+  <label>
+    Nome
+    <input name="nome" value="{{ nome or '' }}" required autofocus>
+  </label>
+  <label>
+    Identificador (opcional)
+    <input name="slug" value="{{ slug or '' }}" placeholder="gerado a partir do nome"
+           {% if erro %}aria-invalid="true" aria-describedby="erro-perfil"{% endif %}>
+    <small {% if erro %}id="erro-perfil"{% endif %}>
+      {{ erro or "Letras minúsculas sem acento, números e hífens. Vira o nome da pasta do perfil." }}
+    </small>
+  </label>
+  <button type="submit">Criar perfil</button>
+</form>
+{% endblock %}

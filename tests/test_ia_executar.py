@@ -8,9 +8,6 @@ from pydantic_ai.exceptions import (
     ModelHTTPError,
     ModelRateLimitError,
 )
-from pydantic_ai.messages import ModelResponse, ToolCallPart
-from pydantic_ai.models.function import FunctionModel
-from pydantic_ai.usage import RequestUsage
 from sqlmodel import Session, select
 
 from app.db import banco_do_perfil
@@ -18,6 +15,7 @@ from app.ia import ErroIA, TetoAtingido, executar, executar_detalhado
 from app.ia.modelos import ChamadaIA
 from app.ia.tarefas import TESTAR_CONEXAO
 from app.perfis.modelos import Perfil
+from tests.ia_falsa import Falso
 
 pytestmark = pytest.mark.anyio
 
@@ -35,39 +33,6 @@ def perfil() -> Perfil:
 @pytest.fixture
 def engine(perfil):
     return banco_do_perfil(perfil.slug)
-
-
-class Falso:
-    """Modelo falso que responde a saída dada e conta as chamadas."""
-
-    def __init__(self, *respostas, custo=Decimal("0.00125")):
-        self.respostas = list(respostas) or [{"ok": True, "mensagem": "Conexão funcionando."}]
-        self.custo = custo
-        self.chamadas = 0
-        self.ultimo_pedido = None
-
-    def __call__(self, mensagens, info):
-        self.chamadas += 1
-        self.ultimo_pedido = mensagens
-        resposta = self.respostas[min(self.chamadas, len(self.respostas)) - 1]
-        if isinstance(resposta, Exception):
-            raise resposta
-        return ModelResponse(
-            parts=[ToolCallPart(info.output_tools[0].name, resposta)],
-            usage=RequestUsage(input_tokens=1000, output_tokens=40, cost=self.custo),
-        )
-
-
-@pytest.fixture
-def usar_modelo(monkeypatch):
-    def instalar(falso: Falso) -> Falso:
-        monkeypatch.setattr(
-            "app.ia.execucao.montar_modelo",
-            lambda _perfil, _nivel: FunctionModel(falso, model_name="falso"),
-        )
-        return falso
-
-    return instalar
 
 
 def _chamadas(engine) -> list[ChamadaIA]:

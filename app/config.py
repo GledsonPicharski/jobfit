@@ -37,6 +37,30 @@ def caminho_banco(slug: str) -> Path:
     return pasta_app() / "bancos" / f"{slug}.db"
 
 
+class ErroConfig(ValueError):
+    pass
+
+
+def validar_pasta_dados(texto: str) -> Path:
+    """Aceita o caminho como o Windows copia (entre aspas), cria a pasta e testa a escrita."""
+    texto = texto.strip().strip('"').strip()
+    if not texto:
+        raise ErroConfig("Informe a pasta de dados.")
+    pasta = Path(texto).expanduser()
+    if not pasta.is_absolute():
+        raise ErroConfig(
+            f"Use o caminho completo da pasta, por exemplo C:\\JobFit (recebido: {texto})."
+        )
+    try:
+        pasta.mkdir(parents=True, exist_ok=True)
+        teste = pasta / ".jobfit-teste-escrita"
+        gravar_texto(teste, "ok")
+        teste.unlink()
+    except OSError as erro:
+        raise ErroConfig(f"Não consegui gravar em {pasta}: {erro.strerror or erro}.") from erro
+    return pasta
+
+
 def carregar_config() -> AppConfig:
     caminho = caminho_config()
     if not caminho.exists():

@@ -7,9 +7,11 @@ import pytest
 from keyring.backend import KeyringBackend
 from keyring.errors import PasswordDeleteError
 from pydantic_ai import models
+from pydantic_ai.models.function import FunctionModel
 
 from app import config
 from app.db import fechar_bancos
+from tests.ia_falsa import Falso
 
 # Nenhum teste chama provedor de IA de verdade; só TestModel/FunctionModel.
 models.ALLOW_MODEL_REQUESTS = False
@@ -57,3 +59,17 @@ def pasta_dados(tmp_path):
     pasta.mkdir(parents=True)
     config.salvar_config(config.AppConfig(pasta_dados=pasta))
     return pasta
+
+
+@pytest.fixture
+def usar_modelo(monkeypatch):
+    """Troca o modelo do provedor por um `Falso` dentro de `executar()`."""
+
+    def instalar(falso: Falso) -> Falso:
+        monkeypatch.setattr(
+            "app.ia.execucao.montar_modelo",
+            lambda _perfil, _nivel: FunctionModel(falso, model_name="falso"),
+        )
+        return falso
+
+    return instalar

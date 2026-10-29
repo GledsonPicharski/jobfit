@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block conteudo %}
+<h1>Perfis</h1>
+{% if perfis %}
+<ul>
+  {% for p in perfis %}
+  <li><a href="/p/{{ p.slug }}">{{ p.nome }}</a></li>
+  {% endfor %}
+</ul>
+{% else %}
+<p>Nenhum perfil ainda. Crie o primeiro para começar.</p>
+{% endif %}
+<a href="/perfis/novo" role="button">Criar perfil</a>
+<p><small>Pasta de dados: <code>{{ pasta }}</code> · <a href="/configurar-pasta">trocar</a></small></p>
+{% endblock %}
