@@ -9,6 +9,7 @@ from keyring.errors import PasswordDeleteError
 from pydantic_ai import models
 
 from app import config
+from app.db import fechar_bancos
 
 # Nenhum teste chama provedor de IA de verdade; só TestModel/FunctionModel.
 models.ALLOW_MODEL_REQUESTS = False
@@ -41,6 +42,7 @@ def ambiente_isolado(tmp_path, monkeypatch):
     keyring.set_keyring(chaveiro)
     yield chaveiro
     keyring.set_keyring(original)
+    fechar_bancos()
 
 
 @pytest.fixture
