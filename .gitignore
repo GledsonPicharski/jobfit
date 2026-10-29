@@ -1,0 +1,48 @@
+# --- Dados pessoais: NUNCA entram no repositório ---
+perfis/
+fontes/
+cvs/
+backups/
+historico/
+dossie.md
+contexto_pessoal.md
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+.env
+.env.*
+!.env.example
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.egg-info/
+dist/
+build/
+.coverage
+htmlcov/
+
+# --- Saídas e caches locais ---
+saida/
+cache_ia/
+evals/relatorios/
+*.log
+
+# --- Áudio e modelos baixados ---
+*.m4a
+*.mp3
+*.ogg
+*.wav
+modelos_whisper/
+
+# --- Sistema e editores ---
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/

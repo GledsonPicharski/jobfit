@@ -1,0 +1,15 @@
+# Normaliza quebras de linha: LF no repositório, para os diffs ficarem limpos no Windows
+* text=auto eol=lf
+
+# Scripts do Windows precisam de CRLF
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Binários
+*.pdf binary
+*.png binary
+*.jpg binary
+*.docx binary
+*.ttf binary
+*.woff2 binary

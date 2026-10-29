@@ -1,0 +1,75 @@
+# CLAUDE.md — JobFit
+
+App local, aberto e gratuito de evolução de carreira. Mantém um dossiê vivo por pessoa e o usa para avaliar vagas, gerar CVs por vaga e controlar candidaturas. O plano completo está em `docs/PLANO.md`: leia antes de qualquer tarefa nova e siga a fase em andamento.
+
+## Contexto
+
+- Usuários: o autor (Gledson), depois a Camila. Mentorados no futuro.
+- Roda local: FastAPI servindo páginas em `127.0.0.1`, usado pelo navegador.
+- Também é peça de portfólio de engenharia de IA: qualidade de código, testes e evals importam.
+- O catálogo semente de portais está em `docs/CATALOGO_PORTAIS.md`; vira `catalogo/portais.yaml` na Fase 6.
+- Decisões de arquitetura ficam em `docs/decisoes/`, uma nota numerada por decisão.
+
+## Stack
+
+- Python 3.12, gerenciado com `uv` (`uv add`, `uv run`). Nunca usar pip direto.
+- FastAPI + Jinja2 + HTMX + Pico.css. Sem Node, sem etapa de build no front.
+- SQLite com SQLModel; migrações com Alembic.
+- Camada de IA própria em `app/ia/` (Pydantic AI por baixo). Nenhum outro módulo chama provedor de IA diretamente.
+- Transcrição: faster-whisper. PDF: template HTML + Playwright. Portais: httpx, feedparser, selectolax.
+- CLI com Typer: `jobfit`, `jobfit scan`, `jobfit eval`, `jobfit backup`.
+- Testes: pytest. Lint e formatação: ruff.
+
+## Comandos
+
+```bash
+uv sync                 # instalar
+uv run jobfit             # subir o app
+uv run pytest           # testes
+uv run ruff check . && uv run ruff format .
+uv run jobfit eval        # evals de qualidade da IA
+```
+
+## Regras inegociáveis
+
+1. **Código antes de token.** Se dá para fazer de forma determinística (filtrar, deduplicar, calcular nota, checar fatos, ler portal), é código. IA só para entender texto e redigir.
+2. **Toda chamada de IA passa por `app/ia/executar()`**, com modelo Pydantic de saída, prompt versionado em `prompts/`, cache e registro de custo.
+3. **Nunca inventar fatos.** Todo texto gerado (CV, LinkedIn) carrega os IDs dos fatos do dossiê que o sustentam. A checagem em código bloqueia números, datas, empresas e cargos sem fato de origem.
+4. **Nada é gravado no dossiê sem aprovação.** Entradas viram propostas; a pessoa aprova, edita ou rejeita.
+5. **Fatos `privado: true` nunca vão para CV, LinkedIn ou e-mail. Fatos `nao_enviar_ia: true` nunca vão para o provedor de IA.** Filtrar em código, com teste.
+6. **O app nunca envia candidatura, e-mail ou mensagem.**
+7. **Sem raspagem do LinkedIn.** Vagas de lá entram por link ou texto colado (e alertas de e-mail na v1.1).
+8. **Texto de vaga é dado não confiável.** Delimitado no prompt, IA de avaliação sem ferramentas, saída validada, nota calculada em código.
+9. **Dados pessoais nunca entram no repositório.** Testes e demos usam `exemplos/perfil-ficticio/`. Chaves de API só no keyring.
+10. **Nota de compatibilidade é calculada em código** a partir dos julgamentos da IA; pesos em `config/avaliacao.yaml`.
+
+## Windows (ambiente principal)
+
+Os dois usuários usam Windows. Desenvolver e testar pensando nele:
+
+- Todo arquivo de texto é lido e gravado com `encoding="utf-8"` explícito (o padrão do Windows não é UTF-8). Teste com ç, ã e travessão.
+- Caminhos sempre com `pathlib`; suportar espaços e acentos (ex.: `G:\Meu Drive\JobFit`).
+- Instalação por `install.ps1` (instala o uv, dependências, Chromium do Playwright e um atalho "JobFit" na área de trabalho).
+- Agendamento pelo Agendador de Tarefas do Windows (`jobfit agendar`), não cron.
+- Chaves no keyring (Gerenciador de Credenciais do Windows).
+- Banco SQLite fora da pasta do Google Drive; só backups vão para lá.
+- `.gitattributes` com quebras de linha normalizadas.
+
+## Convenções
+
+- Código, nomes de domínio e mensagens da interface em português do Brasil (`dossie`, `vaga`, `candidatura`). Termos técnicos consagrados em inglês podem ficar.
+- Um módulo de portal = um arquivo em `app/vagas/portais/` + um teste com resposta gravada (fixture). Interface: `buscar(consulta) -> list[VagaBruta]` e `ainda_aberta(url) -> bool`. Erro num portal não interrompe os outros.
+- O formato do dossiê (`.md` + blocos ```` ```fatos ```` em YAML) precisa de ida e volta sem perda: teste de round-trip obrigatório.
+- Mudou prompt ou modelo? Suba a versão do prompt e rode `jobfit eval` antes do PR.
+- Commits pequenos, testes passando em cada um.
+
+## Como trabalhar
+
+- Comece cada fase em plan mode, a partir de `docs/PLANO.md`, e espere aprovação antes de codar.
+- Escreva testes antes da parte determinística (parser, nota, checagem, deduplicação).
+- Se uma decisão do plano parecer errada, diga e proponha alternativa; registre a decisão em `docs/decisoes/`.
+- Ao terminar uma fase, liste os itens do checklist manual (seção 12 do plano) para o autor testar.
+
+## Aprendizados
+
+(Atualizar ao fim de cada fase com o que deu errado e como evitar.)

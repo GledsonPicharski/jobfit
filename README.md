@@ -1,0 +1,49 @@
+# JobFit
+
+**Living career dossier.** Um app local, aberto e gratuito que mantém um dossiê de carreira vivo e o usa para avaliar vagas, gerar um CV por vaga e controlar candidaturas, sem inventar nada e sem enviar nada por você.
+
+> Status: em construção (Fase 0). O plano completo está em [`docs/PLANO.md`](docs/PLANO.md).
+
+## O que ele faz
+
+- **Dossiê vivo:** importa o PDF do LinkedIn, CVs, textos e áudios, e transforma tudo em fatos com origem. Nada entra sem a sua aprovação.
+- **Avaliação de vagas:** filtros em código, requisitos julgados pela IA e nota calculada em código, com forças, lacunas e o botão "eu tenho isso", que alimenta o dossiê.
+- **CV por vaga:** em português e inglês, com checagem em código de que todo número, data, empresa e cargo existe no dossiê.
+- **Candidaturas:** estados, histórico, follow-ups e banco de respostas de formulário.
+- **Portais:** leitores de APIs públicas e feeds, buscas salvas e métricas de quais portais realmente geram entrevistas.
+
+## Princípios
+
+1. Código antes de token.
+2. Nunca inventar: todo texto gerado aponta para fatos do dossiê.
+3. Você decide e envia; o app nunca se candidata por você.
+4. Seus dados ficam com você, numa pasta local.
+5. Você usa a sua própria IA (Anthropic, OpenAI, Gemini, OpenRouter ou Ollama local).
+
+## Instalação (Windows)
+
+> Disponível a partir da Fase 8. Até lá, para desenvolvimento:
+
+```powershell
+# 1. Instalar o uv
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+
+# 2. Instalar as dependências
+uv sync
+
+# 3. Subir o app
+uv run jobfit
+```
+
+## Stack
+
+Python 3.12 · uv · FastAPI · Jinja2 + HTMX · SQLite (SQLModel) · Pydantic AI · faster-whisper · Playwright · pytest
+
+## Inspirações
+
+- [career-ops](https://github.com/career-ops-hq/career-ops): avaliação de vagas, checagem de fatos e leitores de portais.
+- JobCopilot: buscas salvas, banco de respostas e simulador de entrevista.
+
+## Licença
+
+MIT
