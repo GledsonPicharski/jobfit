@@ -8,11 +8,15 @@ dossie.md
 contexto_pessoal.md
 *.db
 *.db-journal
+*.db-wal
+*.db-shm
 *.sqlite
 *.sqlite3
 .env
 .env.*
 !.env.example
+# Termos reais (nomes, e-mails, valores) que o pre-commit procura; nunca versionar
+.dados-sensiveis.txt
 
 # --- Python ---
 __pycache__/
