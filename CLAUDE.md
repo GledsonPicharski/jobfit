@@ -27,6 +27,7 @@ uv sync                 # instalar
 uv run jobfit             # subir o app
 uv run pytest           # testes
 uv run ruff check . && uv run ruff format .
+uv run pre-commit install # uma vez: ruff + checagem de dados pessoais por commit
 uv run jobfit eval        # evals de qualidade da IA
 ```
 
@@ -73,3 +74,13 @@ Os dois usuários usam Windows. Desenvolver e testar pensando nele:
 ## Aprendizados
 
 (Atualizar ao fim de cada fase com o que deu errado e como evitar.)
+
+**Fase 0**
+
+- Confira a API instalada antes de escrever contra uma biblioteca: o Pydantic AI 2.x já calcula `usage.cost`, e o SQLModel atual exige datas com fuso (`UTCDateTime`).
+- `app.ia.executar` é a função exportada, não o módulo. Monkeypatch de internals vai em `app.ia.execucao.*`.
+- O Pydantic AI imprime um banner no stdout; `app/ia/__init__.py` define `PYDANTIC_AI_NO_BANNER`.
+- SDKs de provedor demoram para importar no Windows. Importe-os dentro da função que os usa, nunca no topo de módulos carregados pelo app web.
+- Teste que precisa de CPF, e-mail real ou valor em R$ monta o dado em tempo de execução; escrito literal, o pre-commit barra o próprio teste.
+- No Git Bash, `curl` manda argumentos com acento em cp1252. Teste UTF-8 pelo `TestClient` ou pelo navegador, não por curl.
+- O `uv init` copia o e-mail do git para `authors` no `pyproject.toml`: tirar (o pre-commit barra).

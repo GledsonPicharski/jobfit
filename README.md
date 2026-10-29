@@ -2,7 +2,7 @@
 
 **Living career dossier.** Um app local, aberto e gratuito que mantém um dossiê de carreira vivo e o usa para avaliar vagas, gerar um CV por vaga e controlar candidaturas, sem inventar nada e sem enviar nada por você.
 
-> Status: em construção (Fase 0). O plano completo está em [`docs/PLANO.md`](docs/PLANO.md).
+> Status: em construção (Fase 0: fundação). O plano completo está em [`docs/PLANO.md`](docs/PLANO.md).
 
 ## O que ele faz
 
@@ -31,9 +31,21 @@ powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | ie
 # 2. Instalar as dependências
 uv sync
 
-# 3. Subir o app
+# 3. Subir o app (abre o navegador em http://127.0.0.1:8765)
 uv run jobfit
 ```
+
+Na primeira execução, o app pede a pasta de dados (pode ser dentro do Google Drive para desktop), depois o primeiro perfil e a chave de IA (Anthropic ou OpenRouter). A chave fica no Gerenciador de Credenciais do Windows.
+
+### Para contribuir
+
+```powershell
+uv run pre-commit install   # ruff e checagem de dados pessoais em cada commit
+uv run pytest
+uv run ruff check . ; uv run ruff format .
+```
+
+O pre-commit barra CPF, e-mail real, valores em R$ e celulares. Para barrar também os seus nomes e e-mails reais, liste-os num arquivo `.dados-sensiveis.txt` na raiz (um termo por linha). Esse arquivo está no `.gitignore` e nunca vai para o repositório.
 
 ## Stack
 
