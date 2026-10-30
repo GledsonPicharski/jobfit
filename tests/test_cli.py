@@ -1,3 +1,4 @@
+import re
 import socket
 
 import pytest
@@ -21,7 +22,8 @@ def navegador(monkeypatch):
 def test_ajuda(runner):
     resultado = runner.invoke(cli.cli, ["--help"])
     assert resultado.exit_code == 0
-    assert "--porta" in resultado.output
+    # Na CI o Rich colore a ajuda; os códigos ANSI quebram "--porta" ao meio.
+    assert "--porta" in re.sub(r"\x1b\[[0-9;]*m", "", resultado.output)
 
 
 def test_servidor_so_escuta_em_localhost():

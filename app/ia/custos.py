@@ -36,6 +36,9 @@ class Gasto:
 
 
 def _agora_local(agora: datetime | None) -> datetime:
+    """Um `agora` com fuso já define o dia; sem fuso (ou ausente), vale o relógio da máquina."""
+    if agora is not None and agora.tzinfo is not None:
+        return agora
     return (agora or datetime.now()).astimezone()
 
 
