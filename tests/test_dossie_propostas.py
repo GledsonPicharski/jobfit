@@ -4,7 +4,7 @@ import pytest
 
 from app.db import banco_do_perfil
 from app.dossie.formato import ler_dossie
-from app.dossie.modelos import Periodo
+from app.dossie.modelos import Fato, Periodo
 from app.dossie.propostas import (
     Candidato,
     ErroProposta,
@@ -53,8 +53,14 @@ def test_duplicado_dentro_da_mesma_importacao():
 
 
 def test_mesmo_texto_com_tipo_diferente_nao_e_duplicado():
-    montagem = montar_propostas(FATOS, [_cand(tipo="competencia", texto="Python, SQL e dbt.")])
+    montagem = montar_propostas(FATOS, [_cand(tipo="preferencia", texto="Python, SQL e dbt.")])
     assert len(montagem.propostas) == 1
+
+
+def test_competencia_e_ferramenta_sao_o_mesmo_assunto():
+    # O LinkedIn chama de competência o que o dossiê guarda como ferramenta (F-041).
+    montagem = montar_propostas(FATOS, [_cand(tipo="competencia", texto="Python, SQL e dbt.")])
+    assert montagem.propostas == []
 
 
 def test_ja_rejeitado_nao_volta():
@@ -110,6 +116,136 @@ def test_cargo_existente_sem_periodo_recebe_proposta_de_completar():
     fatos = [f.model_copy(update={"periodo": None}) if f.id == "F-010" else f for f in FATOS]
     [p] = montar_propostas(fatos, [_cargo("linkedin_pdf", "2023-03", None)]).propostas
     assert (p.acao, p.fato_alvo, p.sugestao) == ("alterar", "F-010", "aprovar")
+
+
+# Fatos escritos à mão, como num dossiê migrado: cargo só no texto, empresa abreviada.
+def _fato(n, tipo, texto, empresa=None, inicio=None, fim=None, origem="manual 2026-10-25"):
+    periodo = Periodo(inicio=inicio, fim=fim) if inicio else None
+    return Fato(
+        id=f"F-{n:03d}", tipo=tipo, texto=texto, empresa=empresa, periodo=periodo, origem=origem
+    )
+
+
+A_MAO = [
+    _fato(
+        100,
+        "cargo",
+        "Gerente Sênior de Dados & IA no Grupo Exemplo (fintech)",
+        "Exemplo",
+        "2024-08",
+    ),
+    _fato(
+        101,
+        "cargo",
+        "Gerente de Dados & IA no Grupo Exemplo (fintech)",
+        "Exemplo",
+        "2022-06",
+        "2024-07",
+    ),
+    _fato(
+        600,
+        "docencia",
+        "Professor convidado no ISAE-Exemplo, Big Data",
+        "ISAE-Exemplo",
+        "2018-11",
+        "2019-06",
+    ),
+    _fato(400, "idioma", "Português: nativo"),
+    _fato(
+        202,
+        "formacao",
+        "Bacharelado em Estatística — Universidade Fictícia do Paraná (UFP)",
+        "UFP",
+        "2010",
+        "2014",
+    ),
+    _fato(201, "formacao", "Mestrado em Biotecnologia — Faculdades Exemplo", "Faculdades Exemplo"),
+    _fato(502, "certificacao", "Software Engineering for Data Scientists in Python — DataCamp"),
+    _fato(310, "ferramenta", "Engenharia de software: Git, HTML, CSS e JavaScript"),
+    _fato(2, "contato", "E-mail: ana" + "@exemplo.test"),
+]
+
+
+def _do_linkedin(tipo, texto, **campos):
+    return _cand(tipo=tipo, texto=texto, fonte="linkedin_pdf", **campos)
+
+
+def _cargo_linkedin(cargo, empresa, inicio, fim=None, tipo="cargo"):
+    return _do_linkedin(
+        tipo,
+        f"{cargo} — {empresa}",
+        empresa=empresa,
+        cargo=cargo,
+        periodo=Periodo(inicio=inicio, fim=fim),
+    )
+
+
+def test_cargo_reconhecido_por_empresa_e_inicio_mesmo_sem_campo_cargo():
+    cand = _cargo_linkedin("Gerente Sênior de Dados & IA - Fintech", "Grupo Exemplo", "2024-08")
+    assert montar_propostas(A_MAO, [cand]).propostas == []
+
+
+def test_mesmo_inicio_com_fim_diferente_e_conflito():
+    cand = _cargo_linkedin("Gerente de Dados & IA - Fintech", "Grupo Exemplo", "2022-06", "2024-08")
+    [p] = montar_propostas(A_MAO, [cand]).propostas
+    assert (p.acao, p.fato_alvo) == ("conflito", "F-101")
+
+
+def test_datas_diferentes_casam_pelo_titulo_sem_confundir_senioridade():
+    cand = _cargo_linkedin("Gerente de Dados & IA", "Grupo Exemplo", "2022-01", "2024-07")
+    [p] = montar_propostas(A_MAO, [cand]).propostas
+    assert (p.acao, p.fato_alvo) == ("conflito", "F-101")
+
+
+def test_cargo_de_outra_empresa_com_mesma_data_e_novo():
+    cand = _cargo_linkedin("Gerente de Dados & IA", "Outra Empresa", "2022-06", "2024-07")
+    [p] = montar_propostas(A_MAO, [cand]).propostas
+    assert p.acao == "novo"
+
+
+def test_cargo_do_linkedin_reconhece_docencia_ja_registrada():
+    cand = _cargo_linkedin("Professor convidado, Big Data", "ISAE", "2018-11", "2019-06")
+    assert montar_propostas(A_MAO, [cand]).propostas == []
+
+
+@pytest.mark.parametrize(
+    ("tipo", "texto", "campos"),
+    [
+        ("idioma", "Português: nativo ou bilíngue", {}),
+        (
+            "formacao",
+            "Graduação, Statistics — Universidade Fictícia do Paraná",
+            {"empresa": "Universidade Fictícia do Paraná"},
+        ),
+        (
+            "formacao",
+            "Master's degree, Biotecnologia — FPP - Faculdades Exemplo",
+            {"empresa": "FPP - Faculdades Exemplo"},
+        ),
+        ("certificacao", "Software Engineering for Data Scientists in Python", {}),
+        ("competencia", "HTML", {}),
+        ("competencia", "Cascading Style Sheets (CSS)", {}),  # a sigla está no dossiê
+        ("contato", "E-mail: ana" + "@exemplo.test", {}),
+    ],
+)
+def test_ja_registrado_com_outras_palavras_nao_vira_proposta(tipo, texto, campos):
+    montagem = montar_propostas(A_MAO, [_do_linkedin(tipo, texto, **campos)])
+    assert montagem.propostas == []
+    assert montagem.duplicados == 1
+
+
+@pytest.mark.parametrize(
+    ("tipo", "texto", "campos"),
+    [
+        ("idioma", "Francês: básico", {}),
+        ("formacao", "MBA — Escola Nova", {"empresa": "Escola Nova"}),
+        ("certificacao", "Data Science in Real Life", {}),
+        ("competencia", "R", {}),  # palavra inteira: o "r" de "Git" não conta
+    ],
+)
+def test_o_que_falta_no_dossie_vira_proposta(tipo, texto, campos):
+    [p] = montar_propostas(A_MAO, [_do_linkedin(tipo, texto, **campos)]).propostas
+    assert p.acao == "novo"
 
 
 def test_candidato_com_alerta_comeca_sugerindo_rejeitar():

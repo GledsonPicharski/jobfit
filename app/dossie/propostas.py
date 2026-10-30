@@ -25,15 +25,40 @@ from app.dossie.versoes import alterar_dossie
 from app.perfis.modelos import Perfil
 from app.validacao import descrever_erro
 
-CAMPOS_DO_FATO = ("tipo", "texto", "empresa", "cargo", "periodo", "metricas", "privado")
+CAMPOS_DO_FATO = (
+    "tipo",
+    "texto",
+    "empresa",
+    "cargo",
+    "periodo",
+    "metricas",
+    "privado",
+    "nao_enviar_ia",
+)
 DECISOES = ("pendente", "aprovada", "editada", "rejeitada")
 SEMELHANCA_DUPLICADO = 0.9
+SEMELHANCA_TITULO = 0.8  # palavras em comum entre dois títulos de cargo (Jaccard)
 
 # Quanto maior, mais confiável. O que não está aqui (manual, áudio, resposta de lacuna)
 # foi confirmado pela própria pessoa e fica no topo.
 _PESO_FONTE = {"cv": 1, "linkedin_pdf": 2, "texto": 2}
 _NOME_FONTE = {"cv": "CV antigo", "linkedin_pdf": "LinkedIn", "texto": "texto importado"}
 _PESO_CONFIRMADO = 3
+
+
+# Tipos que descrevem uma passagem por uma empresa ou instituição.
+_TIPOS_COM_EMPRESA = ("cargo", "docencia", "mentoria")
+_TIPOS_IRMAOS = {"competencia": "ferramenta", "ferramenta": "competencia"}
+_PALAVRAS_VAZIAS = {"a", "o", "e", "de", "da", "do", "das", "dos", "em", "no", "na"}
+_PALAVRAS_VAZIAS |= {"of", "and", "the", "at", "in", "for"}
+_IDIOMAS_EN = {
+    "portuguese": "portugues",
+    "english": "ingles",
+    "spanish": "espanhol",
+    "french": "frances",
+    "german": "alemao",
+    "italian": "italiano",
+}
 
 
 class ErroProposta(ValueError):
@@ -53,6 +78,8 @@ class Candidato(BaseModel):
     cargo: str | None = None
     periodo: Periodo | None = None
     metricas: dict[str, str | int | float] = Field(default_factory=dict)
+    privado: bool = False
+    nao_enviar_ia: bool = False  # e-mail e telefone já chegam fora da IA
     fonte: str  # linkedin_pdf | cv | texto
     trecho: str | None = None
     alertas: list[str] = Field(default_factory=list)
@@ -93,13 +120,79 @@ def _parecidos(a: str, b: str) -> bool:
     return a == b or SequenceMatcher(None, a, b).ratio() >= SEMELHANCA_DUPLICADO
 
 
-def _mesmo_cargo(fato: Fato, cand: Candidato) -> bool:
-    return (
-        fato.tipo == "cargo"
-        and bool(fato.empresa and fato.cargo and cand.empresa and cand.cargo)
-        and _normalizar(fato.empresa or "") == _normalizar(cand.empresa or "")
-        and _normalizar(fato.cargo or "") == _normalizar(cand.cargo or "")
-    )
+def _contido(parte: str | None, todo: str | None) -> bool:
+    """Palavra por palavra: "R" não está contido em "Git"."""
+    parte, todo = _normalizar(parte or ""), _normalizar(todo or "")
+    return bool(parte) and f" {parte} " in f" {todo} "
+
+
+def _mesma_empresa(a: str | None, b: str | None) -> bool:
+    return _contido(a, b) or _contido(b, a)  # "QuintoAndar" e "Grupo QuintoAndar"
+
+
+def _titulo(fato: Fato) -> str:
+    """O cargo do fato: o campo ou, num fato escrito à mão, o começo do texto."""
+    if fato.cargo:
+        return fato.cargo
+    return re.split(r"\s+(?:no|na|em|at)\s+|\s+[—–-]\s+|[,:(]", fato.texto, maxsplit=1)[0]
+
+
+def _semelhanca_titulo(a: str, b: str) -> float:
+    pa = set(_normalizar(a).split()) - _PALAVRAS_VAZIAS
+    pb = set(_normalizar(b).split()) - _PALAVRAS_VAZIAS
+    return len(pa & pb) / len(pa | pb) if pa and pb else 0.0
+
+
+def _cargo_existente(fatos: list[Fato], cand: Candidato) -> Fato | None:
+    """O mesmo cargo no dossiê: mesma empresa e mesmo início, ou mesma empresa e mesmo título."""
+    if cand.tipo not in _TIPOS_COM_EMPRESA or not cand.empresa:
+        return None
+    da_empresa = [
+        f
+        for f in fatos
+        if f.tipo in _TIPOS_COM_EMPRESA
+        and (_mesma_empresa(f.empresa, cand.empresa) or _contido(cand.empresa, f.texto))
+    ]
+    da_empresa.sort(key=lambda f: f.tipo != cand.tipo)  # um cargo antes de uma docência
+    inicio = cand.periodo.inicio if cand.periodo else None
+    for fato in da_empresa:
+        if inicio and fato.periodo and fato.periodo.inicio == inicio:
+            return fato
+    if not cand.cargo:
+        return None
+    notas = [(_semelhanca_titulo(_titulo(f), cand.cargo), f) for f in da_empresa]
+    nota, fato = max(notas, key=lambda par: par[0], default=(0.0, None))
+    return fato if nota >= SEMELHANCA_TITULO else None
+
+
+def _idioma(texto: str) -> str:
+    nome = (_normalizar(texto).split() or [""])[0]
+    return _IDIOMAS_EN.get(nome, nome)
+
+
+def _mesmo_ano(a: Periodo | None, b: Periodo | None) -> bool:
+    if a is None or b is None or not a.inicio or not b.inicio:
+        return True
+    return a.inicio[:4] == b.inicio[:4]
+
+
+def _ja_registrado(fato: Fato, cand: Candidato) -> bool:
+    """O dossiê já diz isto, talvez com outras palavras (o dossiê costuma ser mais rico)."""
+    if fato.tipo != cand.tipo and _TIPOS_IRMAOS.get(fato.tipo) != cand.tipo:
+        return False
+    if _parecidos(fato.texto, cand.texto) or _contido(cand.texto, fato.texto):
+        return True
+    sigla = re.fullmatch(r".+\(([^()]+)\)\s*", cand.texto)  # "Cascading Style Sheets (CSS)"
+    if sigla and _contido(sigla.group(1), fato.texto):
+        return True
+    if cand.tipo == "idioma":
+        return _idioma(fato.texto) == _idioma(cand.texto)
+    if cand.tipo == "formacao" and cand.empresa:
+        instituicao = _contido(cand.empresa, fato.texto) or _mesma_empresa(
+            fato.empresa, cand.empresa
+        )
+        return instituicao and _mesmo_ano(fato.periodo, cand.periodo)
+    return False
 
 
 def _conflito(atual: Fato, cand: Candidato) -> PropostaNova:
@@ -120,9 +213,7 @@ def _conflito(atual: Fato, cand: Candidato) -> PropostaNova:
 
 def _comparar(fatos: list[Fato], cand: Candidato) -> PropostaNova | None:
     """None quando o candidato já está no dossiê."""
-    for atual in fatos:
-        if not _mesmo_cargo(atual, cand):
-            continue
+    if atual := _cargo_existente(fatos, cand):
         if cand.periodo is None or cand.periodo == atual.periodo:
             return None
         if atual.periodo is None:
@@ -130,7 +221,7 @@ def _comparar(fatos: list[Fato], cand: Candidato) -> PropostaNova | None:
                 "alterar", cand, "aprovar", atual.id, "Completa o período do cargo."
             )
         return _conflito(atual, cand)
-    if any(f.tipo == cand.tipo and _parecidos(f.texto, cand.texto) for f in fatos):
+    if any(_ja_registrado(f, cand) for f in fatos):
         return None
     sugestao = "rejeitar" if cand.alertas else "aprovar"
     return PropostaNova("novo", cand, sugestao)
