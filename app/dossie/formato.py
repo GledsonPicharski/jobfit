@@ -1,8 +1,8 @@
 """Leitura e escrita do `dossie.md`: narrativa livre mais blocos ```` ```fatos ```` em YAML.
 
 Ida e volta sem perda: o que não foi alterado sai byte a byte como entrou, inclusive
-comentários e a formatação de quem editou à mão. Só um bloco com fato alterado é
-reserializado.
+comentários e a formatação de quem editou à mão. Num bloco alterado, só o fato que mudou
+é reserializado; os vizinhos e os comentários entre eles ficam como estavam.
 """
 
 import re
@@ -43,6 +43,15 @@ class Texto:
 
 
 @dataclass
+class Trecho:
+    """Um fato como foi lido: o texto dele e o que vem depois (linhas em branco, comentários)."""
+
+    fato: Fato
+    texto: str
+    depois: str
+
+
+@dataclass
 class BlocoFatos:
     abertura: str
     bruto: str
@@ -50,9 +59,26 @@ class BlocoFatos:
     fatos: list[Fato]
     linha: int = 0  # linha do arquivo onde começa o conteúdo do bloco
     alterado: bool = False
+    antes: str = ""  # comentários antes do primeiro fato
+    trechos: list[Trecho] = field(default_factory=list)
 
     def conteudo(self) -> str:
-        return serializar_fatos(self.fatos) if self.alterado else self.bruto
+        if not self.alterado:
+            return self.bruto
+        if not self.trechos:
+            return serializar_fatos(self.fatos)
+        lidos = {t.fato.id: t for t in self.trechos}
+        partes = [self.antes]
+        for fato in self.fatos:
+            lido = lidos.get(fato.id)
+            if lido and lido.fato == fato:
+                partes.append(lido.texto)
+            else:
+                partes.append(serializar_fatos([fato]))
+            if lido and lido is not self.trechos[-1]:
+                partes.append(lido.depois)
+        partes.append(self.trechos[-1].depois)  # o fim do bloco, depois do último fato lido
+        return "".join(partes)
 
 
 @dataclass
@@ -144,7 +170,7 @@ def _fecha_cerca(linha: str, cerca: str) -> bool:
 
 
 def _ler_fatos(conteudo: str, primeira_linha: int) -> list[tuple[Fato, int]]:
-    """Os fatos do bloco, cada um com a linha do arquivo onde começa."""
+    """Os fatos do bloco, cada um com a linha do arquivo onde começa (`- id:`)."""
     try:
         no = yaml.compose(conteudo, Loader=yaml.SafeLoader)
         dados = yaml.safe_load(conteudo)
@@ -168,6 +194,26 @@ def _ler_fatos(conteudo: str, primeira_linha: int) -> list[tuple[Fato, int]]:
             problemas = "; ".join(descrever_erro(e, raiz="fato") for e in erro.errors())
             raise ErroDossie(linha, f"fato {item.get('id', 'sem id')}: {problemas}") from erro
     return fatos
+
+
+def _so_comentario(linha: str) -> bool:
+    texto = linha.strip()
+    return not texto or texto.startswith("#")
+
+
+def _trechos(conteudo: str, fatos: list[Fato], inicios: list[int]) -> tuple[str, list[Trecho]]:
+    """Corta o bloco em um trecho por fato. Sem cortes seguros, devolve vazio (reserializa)."""
+    linhas = conteudo.splitlines(keepends=True)
+    if not fatos or inicios != sorted(set(inicios)):
+        return "", []
+    trechos = []
+    for n, (fato, inicio) in enumerate(zip(fatos, inicios, strict=True)):
+        fim = inicios[n + 1] if n + 1 < len(inicios) else len(linhas)
+        corte = fim
+        while corte > inicio + 1 and _so_comentario(linhas[corte - 1]):
+            corte -= 1
+        trechos.append(Trecho(fato, "".join(linhas[inicio:corte]), "".join(linhas[corte:fim])))
+    return "".join(linhas[: inicios[0]]), trechos
 
 
 def ler_dossie(texto: str) -> Documento:
@@ -216,7 +262,11 @@ def ler_dossie(texto: str) -> Documento:
                 )
             ids[fato.id] = linha_fato
         fechar_texto()
-        bloco = BlocoFatos(linha, conteudo, linhas[fim], [f for f, _ in fatos], linha=i + 2)
+        lista = [f for f, _ in fatos]
+        antes, trechos = _trechos(conteudo, lista, [n - (i + 2) for _, n in fatos])
+        bloco = BlocoFatos(
+            linha, conteudo, linhas[fim], lista, linha=i + 2, antes=antes, trechos=trechos
+        )
         doc.partes.append(bloco)
         i = fim + 1
     fechar_texto()

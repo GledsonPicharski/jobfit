@@ -10,7 +10,7 @@ A Fase 1 transforma o formato da seção 4 do `PLANO.md` em código. O dossiê �
 
 | Tema | Decisão | Por quê |
 | --- | --- | --- |
-| Ida e volta | Blocos `fatos` não alterados são gravados byte a byte como foram lidos; só o bloco com fato alterado é reserializado (PyYAML, ordem fixa de campos) | Comentários e formatação feitos à mão não somem quando o app grava. O custo: comentários dentro de um bloco alterado se perdem. |
+| Ida e volta | O que não foi alterado é gravado byte a byte como foi lido; num bloco alterado, só o fato que mudou é reserializado (PyYAML, ordem fixa de campos), e os vizinhos e os comentários entre fatos ficam como estavam | Comentários, aspas e formatação feitos à mão não somem quando o app grava, e o diff da versão mostra só o fato mudado. O custo: um comentário na mesma linha de um campo do fato alterado se perde. |
 | Windows | BOM e CRLF são normalizados na leitura; a gravação é UTF-8 com LF | O Bloco de Notas grava BOM e CRLF. |
 | Campos novos | `cargo` e `periodo: {inicio, fim}` com datas ISO parciais (`2023`, `2023-03`); `fim` vazio ou `atual` quer dizer atual | A checagem de fatos do CV (Fase 4) compara cargo e datas; texto livre não dá para checar. |
 | Campos desconhecidos | Preservados (`extra="allow"`) | Quem edita à mão pode anotar o que quiser. |

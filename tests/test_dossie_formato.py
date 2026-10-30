@@ -115,6 +115,57 @@ def test_bloco_reescrito_e_legivel(texto_exemplo):
     assert "  periodo: {inicio: 2018-01, fim: 2023-02}\n" in saida
 
 
+BLOCO_A_MAO = """## Competências e ferramentas
+
+```fatos
+# Revisado em outubro.
+- id: F-001
+  tipo: ferramenta
+  texto: "Python"   # aspas de quem escreveu
+- id: F-002
+  tipo: ferramenta
+  texto: "SQL"
+  status: proposto
+# Conferir com o RH:
+- id: F-003
+  tipo: ferramenta
+  texto: 'Spark'
+
+```
+"""
+
+
+def test_alterar_um_fato_preserva_os_vizinhos_byte_a_byte():
+    doc = ler_dossie(BLOCO_A_MAO)
+    doc.substituir_fato(doc.fato("F-002").model_copy(update={"status": "confirmado"}))
+    saida = escrever_dossie(doc)
+    esperado = BLOCO_A_MAO.replace(
+        '  texto: "SQL"\n  status: proposto\n',
+        "  texto: SQL\n  status: confirmado\n  privado: false\n",
+    )
+    assert saida == esperado
+    assert ler_dossie(saida).fato("F-002").status == "confirmado"
+
+
+def test_alterar_o_ultimo_fato_preserva_comentario_e_linha_em_branco_antes_dele():
+    doc = ler_dossie(BLOCO_A_MAO)
+    doc.substituir_fato(doc.fato("F-003").model_copy(update={"privado": True}))
+    saida = escrever_dossie(doc)
+    assert "# Conferir com o RH:\n- id: F-003\n" in saida
+    assert saida.endswith("  privado: true\n\n```\n")
+    assert saida.startswith(BLOCO_A_MAO[: BLOCO_A_MAO.index("- id: F-003")])
+
+
+def test_fato_novo_entra_no_fim_do_bloco_sem_mexer_no_resto():
+    from app.dossie.estrutura import inserir_fatos
+
+    doc = ler_dossie(BLOCO_A_MAO)
+    inserir_fatos(doc, [Fato(id="F-004", tipo="ferramenta", texto="dbt")])
+    saida = escrever_dossie(doc)
+    assert saida.startswith(BLOCO_A_MAO[: BLOCO_A_MAO.index("\n```\n")])
+    assert [f.id for f in ler_dossie(saida).fatos] == ["F-001", "F-002", "F-003", "F-004"]
+
+
 def test_substituir_fato_inexistente_da_erro(texto_exemplo):
     doc = ler_dossie(texto_exemplo)
     with pytest.raises(KeyError):
