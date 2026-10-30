@@ -6,7 +6,7 @@ Toda tela de perfil fica sob `/p/{slug}/`, para nenhuma misturar dados de dois p
 import contextlib
 from pathlib import Path
 from typing import Annotated
-from urllib.parse import urlsplit
+from urllib.parse import urlencode, urlsplit
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
@@ -27,6 +27,7 @@ from app.ia.custos import gasto_do_dia, gasto_do_mes, para_micro_usd
 from app.ia.manual import cancelar_pedido, obter_pedido, pedidos_pendentes, responder_pedido
 from app.ia.modelos import ChamadaIA, PedidoIA
 from app.ia.tarefas import TESTAR_CONEXAO
+from app.perfis.exclusao import excluir_perfil
 from app.perfis.modelos import MODELOS_PADRAO, PROVEDORES, PROVEDORES_COM_CHAVE, Perfil, Provedor
 from app.perfis.servico import (
     ErroPerfil,
@@ -81,9 +82,11 @@ def _lembrar_perfil(slug: str) -> None:
 
 
 @router.get("/", response_class=HTMLResponse)
-def inicio(request: Request, pasta: Pasta):
+def inicio(request: Request, pasta: Pasta, excluido: str = ""):
     return templates.TemplateResponse(
-        request, "inicio.html", {"perfis": listar_perfis(pasta), "pasta": pasta}
+        request,
+        "inicio.html",
+        {"perfis": listar_perfis(pasta), "pasta": pasta, "excluido": excluido},
     )
 
 
@@ -227,6 +230,35 @@ async def testar_conexao(request: Request, perfil: PerfilAtual):
         "_resultado_teste.html",
         {"saida": resultado.saida, "chamada": resultado.chamada},
     )
+
+
+@router.get("/p/{slug}/excluir", response_class=HTMLResponse)
+def confirmar_exclusao(request: Request, pasta: Pasta, perfil: PerfilAtual):
+    return templates.TemplateResponse(
+        request, "perfil_excluir.html", {"perfil": perfil, "lixeira": pasta / "lixeira"}
+    )
+
+
+@router.post("/p/{slug}/excluir", response_class=HTMLResponse)
+def excluir(
+    request: Request,
+    pasta: Pasta,
+    perfil: PerfilAtual,
+    confirmacao: Annotated[str, Form()] = "",
+):
+    contexto = {"perfil": perfil, "lixeira": pasta / "lixeira"}
+    if confirmacao.strip() != perfil.slug:
+        erro = f"Digite {perfil.slug} para confirmar."
+        return templates.TemplateResponse(
+            request, "perfil_excluir.html", {**contexto, "erro": erro}, status_code=400
+        )
+    try:
+        excluir_perfil(pasta, perfil.slug)
+    except ErroPerfil as erro:
+        return templates.TemplateResponse(
+            request, "perfil_excluir.html", {**contexto, "erro": str(erro)}, status_code=400
+        )
+    return _ir(f"/?{urlencode({'excluido': perfil.nome})}")
 
 
 # --- pedidos do modo manual ---------------------------------------------------

@@ -54,6 +54,11 @@ def banco_do_perfil(slug: str) -> Engine:
     return abrir_banco(caminho_banco(validar_slug(slug)))
 
 
+def fechar_banco(caminho: Path) -> None:
+    if engine := _engines.pop(caminho.resolve(), None):
+        engine.dispose()
+
+
 def fechar_bancos() -> None:
     """Libera os arquivos (no Windows, um SQLite aberto não pode ser apagado)."""
     for engine in _engines.values():

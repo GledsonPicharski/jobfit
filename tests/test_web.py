@@ -340,3 +340,43 @@ def test_handler_leva_qualquer_funcionalidade_ao_pedido(ana):
         data={"resposta": _resposta_valida(pedido_id), "voltar": "/p/ana-exemplo/funcionalidade"},
     )
     assert voltou.json() == {"mensagem": "Funcionou pelo chat."}
+
+
+# --- excluir perfil -----------------------------------------------------------
+
+
+def test_tela_de_excluir_pede_confirmacao(cliente, ana):
+    assert 'href="/p/ana-exemplo/excluir"' in cliente.get("/p/ana-exemplo/ia").text
+    tela = cliente.get("/p/ana-exemplo/excluir")
+    assert tela.status_code == 200
+    assert "lixeira" in tela.text
+    assert 'name="confirmacao"' in tela.text
+
+
+@pytest.mark.parametrize("confirmacao", ["", "ana", "Ana Exemplo"])
+def test_excluir_sem_confirmar_o_identificador_nao_exclui(cliente, ana, pasta_dados, confirmacao):
+    resposta = cliente.post("/p/ana-exemplo/excluir", data={"confirmacao": confirmacao})
+    assert resposta.status_code == 400
+    assert "Digite" in resposta.text
+    assert carregar_perfil(pasta_dados, "ana-exemplo") == ana
+
+
+def test_excluir_perfil_leva_ao_inicio_e_some_da_lista(cliente, ana, pasta_dados):
+    resposta = cliente.post(
+        "/p/ana-exemplo/excluir", data={"confirmacao": " ana-exemplo "}, follow_redirects=False
+    )
+    assert resposta.status_code == 303
+
+    inicio = cliente.get(resposta.headers["location"])
+    assert "Ana Exemplo" in inicio.text
+    assert "lixeira" in inicio.text
+    assert 'href="/p/ana-exemplo"' not in inicio.text
+    assert cliente.get("/p/ana-exemplo").status_code == 404
+    assert len(list((pasta_dados / "lixeira").iterdir())) == 1
+
+
+def test_excluir_exige_origem_do_proprio_app(ana, pasta_dados):
+    sem_origem = TestClient(create_app(), base_url=ORIGEM)
+    resposta = sem_origem.post("/p/ana-exemplo/excluir", data={"confirmacao": "ana-exemplo"})
+    assert resposta.status_code == 403
+    assert carregar_perfil(pasta_dados, "ana-exemplo") == ana

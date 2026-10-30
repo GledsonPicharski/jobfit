@@ -419,6 +419,7 @@ Cada fase só termina com todos os itens dela marcados. Os testes automáticos c
 - [ ] Clonar o repositório numa pasta nova e instalar seguindo só o README.
 - [ ] `uv run jobfit` abre no navegador em `127.0.0.1`; de outro aparelho na rede, não abre.
 - [ ] Criar o perfil "teste" e escolher a pasta de dados.
+- [ ] Excluir o perfil "teste" (pede para digitar o identificador): some da lista, a pasta vai para `lixeira/` e dá para recuperar movendo de volta.
 - [ ] O perfil novo nasce no modo manual, sem pedir chave.
 - [ ] "Testar ciclo": copiar o pacote, colar no Claude.ai ou no ChatGPT grátis, colar a resposta de volta: o app valida e mostra o resultado com custo US$ 0,00.
 - [ ] Colar uma resposta adulterada (outro id de pedido, campo apagado): erro claro e mensagem de correção que, colada no chat, resolve.

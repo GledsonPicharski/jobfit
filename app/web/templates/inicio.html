@@ -1,6 +1,10 @@
 {% extends "base.html" %}
 {% block conteudo %}
 <h1>Perfis</h1>
+{% if excluido %}
+<p class="sucesso">Perfil {{ excluido }} excluído. Os arquivos estão em
+  <code>{{ pasta / "lixeira" }}</code>.</p>
+{% endif %}
 {% if perfis %}
 <ul>
   {% for p in perfis %}
