@@ -6,6 +6,10 @@ backups/
 historico/
 dossie.md
 contexto_pessoal.md
+# Código, testes e o perfil fictício usam esses mesmos nomes (app/perfis/, exemplos/.../dossie.md)
+!/app/**/
+!/tests/**/
+!/exemplos/**
 *.db
 *.db-journal
 *.db-wal
