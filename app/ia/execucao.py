@@ -52,12 +52,42 @@ def _status(erro: Exception) -> int | None:
     return erro.status_code if isinstance(erro, ModelHTTPError) else None
 
 
+def _detalhe_do_provedor(erro: Exception) -> str | None:
+    """Mensagem original do provedor, para a tela. Nunca vai para o banco nem para o log."""
+    if not isinstance(erro, ModelAPIError):
+        return None
+    if isinstance(erro, ModelHTTPError):
+        corpo = erro.body
+        if isinstance(corpo, dict) and isinstance(corpo.get("error"), dict):
+            texto = corpo["error"].get("message")
+        elif isinstance(corpo, dict):
+            texto = corpo.get("message")
+        else:
+            texto = corpo
+    else:
+        texto = erro.message
+    if not texto:
+        return None
+    texto = " ".join(str(texto).split())
+    return texto if len(texto) <= 300 else texto[:300] + "…"
+
+
 def traduzir_erro(erro: Exception, modelo: str) -> ErroIA:
+    traduzido = _traduzir(erro, modelo)
+    if detalhe := _detalhe_do_provedor(erro):
+        return ErroIA(f"{traduzido.mensagem} Resposta do provedor: {detalhe}")
+    return traduzido
+
+
+def _traduzir(erro: Exception, modelo: str) -> ErroIA:
     status = _status(erro)
     if isinstance(erro, ModelAuthenticationError) or status in (401, 403):
         return ErroIA("Chave inválida ou sem permissão no provedor. Confira a chave cadastrada.")
     if isinstance(erro, ModelNotFoundError) or status == 404:
-        return ErroIA(f"Modelo não encontrado no provedor: {modelo}. Confira o nome do modelo.")
+        return ErroIA(
+            f"O provedor não encontrou um servidor para o modelo {modelo}. Confira o nome; "
+            "no OpenRouter, modelos :free também exigem liberar a privacidade da conta."
+        )
     if isinstance(erro, ModelRateLimitError | ModelQuotaExceededError) or status == 429:
         return ErroIA(
             "Limite de uso do provedor atingido. Confira seus créditos ou tente mais tarde."

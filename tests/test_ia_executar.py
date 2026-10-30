@@ -114,7 +114,7 @@ async def test_saida_invalida_duas_vezes_vira_erro(perfil, engine, usar_modelo):
     [
         (ModelHTTPError(401, "falso", body={"error": "invalid x-api-key"}), "Chave inválida"),
         (ModelAuthenticationError("falso", "unauthorized"), "Chave inválida"),
-        (ModelHTTPError(404, "falso"), "Modelo não encontrado"),
+        (ModelHTTPError(404, "falso"), "não encontrou um servidor"),
         (ModelRateLimitError("falso", "slow down"), "Limite de uso"),
         (ModelHTTPError(429, "falso"), "Limite de uso"),
         (ModelConnectionError("falso", "dns"), "Sem conexão"),
@@ -129,6 +129,27 @@ async def test_erros_do_provedor_viram_mensagem_clara(perfil, engine, usar_model
     [chamada] = _chamadas(engine)
     assert not chamada.sucesso
     assert chamada.erro.startswith(type(erro).__name__)
+
+
+async def test_mensagem_do_provedor_vai_para_a_tela_mas_nao_para_o_banco(
+    perfil, engine, usar_modelo
+):
+    detalhe = "No endpoints found matching your data policy (Free model publication)."
+    usar_modelo(Falso(ModelHTTPError(404, "falso", body={"error": {"message": detalhe}})))
+
+    with pytest.raises(ErroIA) as info:
+        await executar(perfil, TESTAR_CONEXAO, "ping", engine=engine)
+
+    assert detalhe in info.value.mensagem
+    [chamada] = _chamadas(engine)
+    assert chamada.erro == "ModelHTTPError (HTTP 404)"
+
+
+async def test_detalhe_do_provedor_e_truncado(perfil, engine, usar_modelo):
+    usar_modelo(Falso(ModelHTTPError(400, "falso", body={"error": {"message": "x" * 5000}})))
+    with pytest.raises(ErroIA) as info:
+        await executar(perfil, TESTAR_CONEXAO, "ping", engine=engine)
+    assert len(info.value.mensagem) < 600
 
 
 async def test_registro_de_erro_nao_guarda_conteudo(perfil, engine, usar_modelo):
