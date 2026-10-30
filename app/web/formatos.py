@@ -3,6 +3,7 @@
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 
+from app.dossie.modelos import Periodo
 from app.ia.custos import de_micro_usd
 
 UM_CENTAVO = Decimal("0.01")
@@ -27,3 +28,9 @@ def ler_decimal(texto: str) -> Decimal:
         return Decimal(texto.strip().replace(",", "."))
     except InvalidOperation as erro:
         raise ValueError(f"Valor inválido: {texto!r}.") from erro
+
+
+def formatar_periodo(periodo: Periodo | None) -> str:
+    if periodo is None or (periodo.inicio is None and periodo.fim is None):
+        return ""
+    return f"{periodo.inicio or '?'} – {periodo.fim or 'atual'}"

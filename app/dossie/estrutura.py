@@ -1,6 +1,7 @@
 """Esqueleto do dossiê novo e a regra, em código, de onde cada fato aprovado entra."""
 
 import re
+from dataclasses import dataclass, field
 from datetime import date
 
 from app.dossie.formato import BlocoFatos, Documento, Texto
@@ -179,3 +180,31 @@ def inserir_fatos(doc: Documento, fatos: list[Fato]) -> None:
     _explodir(doc)
     for fato in fatos:
         _inserir(doc, fato)
+
+
+@dataclass
+class SecaoTela:
+    nivel: int
+    titulo: str
+    fatos: list[Fato] = field(default_factory=list)
+
+
+def secoes_para_tela(doc: Documento) -> list[SecaoTela]:
+    """Títulos e os fatos sob cada um, na ordem do arquivo (sem a narrativa)."""
+    secoes: list[SecaoTela] = []
+    cerca: str | None = None
+    for parte in doc.partes:
+        if isinstance(parte, BlocoFatos):
+            if not secoes:
+                secoes.append(SecaoTela(2, ""))
+            secoes[-1].fatos += parte.fatos
+            continue
+        for linha in parte.conteudo.splitlines():
+            if abre := _CERCA.match(linha):
+                if cerca is None:
+                    cerca = abre.group(1)
+                elif set(linha.strip()) == {cerca[0]}:
+                    cerca = None
+            elif cerca is None and (m := _TITULO.match(linha)) and len(m.group(1)) > 1:
+                secoes.append(SecaoTela(len(m.group(1)), m.group(2)))
+    return secoes

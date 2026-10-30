@@ -20,6 +20,18 @@ TipoFato = Literal[
     "resposta_padrao",
 ]
 StatusFato = Literal["confirmado", "proposto", "rejeitado"]
+ROTULOS_TIPO: dict[str, str] = {
+    "cargo": "Cargo",
+    "resultado": "Resultado",
+    "competencia": "Competência",
+    "ferramenta": "Ferramenta",
+    "formacao": "Formação",
+    "certificacao": "Certificação",
+    "idioma": "Idioma",
+    "preferencia": "Preferência",
+    "restricao": "Restrição",
+    "resposta_padrao": "Resposta padrão",
+}
 
 _DATA_ISO = re.compile(r"^\d{4}(-\d{2}(-\d{2})?)?$")
 _ATUAL = {"atual", "o momento", "present", "presente", "hoje"}

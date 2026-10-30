@@ -6,3 +6,16 @@ p.sucesso, p.falha { padding-left: 0.75rem; }
 #resultado-teste.htmx-request::after { content: "Testando…"; display: block; margin-top: 1rem; }
 .perigo { --pico-background-color: var(--pico-del-color); --pico-border-color: var(--pico-del-color); }
 .texto-perigo { color: var(--pico-del-color); }
+.fato { padding: 0.75rem 1rem; margin-bottom: 0.75rem; }
+.fato p { margin-bottom: 0.5rem; }
+.fato footer { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 0.5rem; padding-top: 0.5rem; margin-top: 0; }
+.fato.privado { border-left: 4px solid var(--pico-del-color); }
+.acoes { display: flex; gap: 0.5rem; }
+.acoes form { margin: 0; }
+.acoes button { padding: 0.2rem 0.6rem; font-size: 0.8rem; margin: 0; }
+.abas { display: flex; gap: 1rem; margin-bottom: 1rem; }
+.abas a[aria-current="page"] { font-weight: 700; text-decoration: underline; }
+pre.diff { white-space: pre-wrap; font-size: 0.8rem; }
+pre.diff .mais { color: var(--pico-ins-color); }
+pre.diff .menos { color: var(--pico-del-color); }
+pre.diff .marca { color: var(--pico-muted-color); }

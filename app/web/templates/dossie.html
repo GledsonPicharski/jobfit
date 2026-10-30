@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block titulo %}Dossiê · {{ perfil.nome }} · JobFit{% endblock %}
+{% block conteudo %}
+<h1>Dossiê</h1>
+
+{% if erro %}
+<article class="aviso falha">
+  <p><strong>O dossiê tem um erro e o JobFit não vai gravar nada nele até ser corrigido.</strong></p>
+  <p>{{ erro }}</p>
+  <p><small>Abra o arquivo no editor, corrija a linha indicada e recarregue esta página:<br>
+    <code>{{ arquivo }}</code></small></p>
+</article>
+{% else %}
+
+<p>
+  versão {{ doc.metadados.get("versao", "?") }} · {{ doc.fatos | length }} fato(s) ·
+  <a href="/p/{{ perfil.slug }}/dossie/historico">histórico</a>
+</p>
+
+{% if importacoes %}
+<article class="aviso">
+  <strong>{{ importacoes | length }} importação(ões) aguardando sua revisão</strong>
+  <ul>
+    {% for imp in importacoes %}
+    <li><a href="/p/{{ perfil.slug }}/importacoes/{{ imp.id }}">{{ imp.nome }}</a></li>
+    {% endfor %}
+  </ul>
+</article>
+{% endif %}
+
+<nav class="abas">
+  <a href="/p/{{ perfil.slug }}/dossie" {% if visao != "cv" %}aria-current="page"{% endif %}>Tudo</a>
+  <a href="/p/{{ perfil.slug }}/dossie?visao=cv" {% if visao == "cv" %}aria-current="page"{% endif %}>Visão de CV</a>
+</nav>
+{% if visao == "cv" %}
+<p><small>Só os fatos que podem ir para CV, LinkedIn ou e-mail: confirmados e sem 🔒.</small></p>
+{% endif %}
+
+{% for secao in secoes %}
+  {% if secao.titulo %}
+  {% if secao.nivel == 2 %}<h2>{{ secao.titulo }}</h2>{% else %}<h3>{{ secao.titulo }}</h3>{% endif %}
+  {% endif %}
+  {% for f in secao.fatos %}
+  <article class="fato{% if f.privado %} privado{% endif %}" id="{{ f.id }}">
+    <p>
+      <small>{{ f.id }} · {{ ROTULOS_TIPO.get(f.tipo, f.tipo) }}
+        {% if f.periodo %} · {{ f.periodo | periodo }}{% endif %}
+        {% if f.status != "confirmado" %} · {{ f.status }}{% endif %}</small><br>
+      {% if f.privado %}🔒 {% endif %}{{ f.texto }}
+    </p>
+    <footer>
+      <small>
+        {% if f.origem %}origem: {{ f.origem }}{% endif %}
+        {% if f.nao_enviar_ia %} · não vai para a IA{% endif %}
+      </small>
+      {% if visao != "cv" %}
+      <span class="acoes">
+        <form method="post" action="/p/{{ perfil.slug }}/dossie/fatos/{{ f.id }}/alternar">
+          <input type="hidden" name="campo" value="privado">
+          <button type="submit" class="outline secondary">{% if f.privado %}Tirar 🔒{% else %}Marcar 🔒{% endif %}</button>
+        </form>
+        <form method="post" action="/p/{{ perfil.slug }}/dossie/fatos/{{ f.id }}/alternar">
+          <input type="hidden" name="campo" value="nao_enviar_ia">
+          <button type="submit" class="outline secondary">{% if f.nao_enviar_ia %}Liberar para a IA{% else %}Não enviar à IA{% endif %}</button>
+        </form>
+      </span>
+      {% endif %}
+    </footer>
+  </article>
+  {% endfor %}
+{% endfor %}
+
+<p><small>Para editar textos à mão, abra o arquivo no seu editor. O JobFit registra a edição
+  como uma versão nova da próxima vez que você abrir esta página:<br><code>{{ arquivo }}</code></small></p>
+{% endif %}
+{% endblock %}

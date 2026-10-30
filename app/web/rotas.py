@@ -71,7 +71,7 @@ Pasta = Annotated[Path, Depends(exigir_pasta)]
 PerfilAtual = Annotated[Perfil, Depends(obter_perfil)]
 
 
-def _ir(url: str) -> RedirectResponse:
+def ir(url: str) -> RedirectResponse:
     return RedirectResponse(url, status_code=303)
 
 
@@ -110,7 +110,7 @@ def salvar_pasta(request: Request, pasta: Annotated[str, Form()]):
         )
     cfg = config.carregar_config()
     config.salvar_config(cfg.model_copy(update={"pasta_dados": caminho}))
-    return _ir("/")
+    return ir("/")
 
 
 @router.get("/perfis/novo", response_class=HTMLResponse)
@@ -135,7 +135,7 @@ def criar(
             status_code=400,
         )
     _lembrar_perfil(perfil.slug)
-    return _ir(f"/p/{perfil.slug}/ia")
+    return ir(f"/p/{perfil.slug}/ia")
 
 
 @router.get("/p/{slug}", response_class=HTMLResponse)
@@ -210,7 +210,7 @@ def salvar_ia(
     salvar_perfil(pasta, perfil.model_copy(update={"ia": ia}))
     if chave.strip() and provedor in PROVEDORES_COM_CHAVE:
         salvar_chave(perfil.slug, provedor, chave)
-    return _ir(f"/p/{perfil.slug}/ia?salvo=1")
+    return ir(f"/p/{perfil.slug}/ia?salvo=1")
 
 
 @router.post("/p/{slug}/ia/testar", response_class=HTMLResponse)
@@ -222,7 +222,7 @@ async def testar_conexao(request: Request, perfil: PerfilAtual):
         )
     except AguardandoResposta as aguardando:
         # Modo manual: o resultado do teste aparece na própria tela do pedido, sem "voltar".
-        return _ir(f"/p/{perfil.slug}/pedidos/{aguardando.pedido.id}")
+        return ir(f"/p/{perfil.slug}/pedidos/{aguardando.pedido.id}")
     except ErroIA as erro:
         return templates.TemplateResponse(request, "_resultado_teste.html", {"erro": erro.mensagem})
     return templates.TemplateResponse(
@@ -258,7 +258,7 @@ def excluir(
         return templates.TemplateResponse(
             request, "perfil_excluir.html", {**contexto, "erro": str(erro)}, status_code=400
         )
-    return _ir(f"/?{urlencode({'excluido': perfil.nome})}")
+    return ir(f"/?{urlencode({'excluido': perfil.nome})}")
 
 
 # --- pedidos do modo manual ---------------------------------------------------
@@ -335,7 +335,7 @@ def responder(
     except PedidoIndisponivel as erro:
         return _tela_pedido(request, perfil, pedido, 400, erro=erro.mensagem)
     if destino:
-        return _ir(destino)
+        return ir(destino)
     return _tela_pedido(
         request,
         perfil,
@@ -350,4 +350,4 @@ def cancelar(perfil: PerfilAtual, pedido_id: str):
     pedido = _obter_pedido(perfil, pedido_id)
     with contextlib.suppress(PedidoIndisponivel):  # já respondido ou cancelado: nada a fazer
         cancelar_pedido(banco_do_perfil(perfil.slug), pedido.id)
-    return _ir(f"/p/{perfil.slug}")
+    return ir(f"/p/{perfil.slug}")
