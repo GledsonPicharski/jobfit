@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block titulo %}Importar · {{ perfil.nome }} · JobFit{% endblock %}
+{% block conteudo %}
+<h1>Importar para o dossiê</h1>
+<p>O que você importar vira <strong>propostas</strong>. Nada entra no dossiê antes de você aprovar.</p>
+
+{% if erro %}
+<article class="aviso falha"><p>{{ erro }}</p></article>
+{% endif %}
+
+<article>
+  <h2>PDF do LinkedIn</h2>
+  <p>No LinkedIn, abra o seu perfil e use <strong>Recursos → Salvar como PDF</strong>.
+    Cargos, empresas, datas, formação, idiomas e certificações são lidos sem IA.</p>
+  <form method="post" action="/p/{{ perfil.slug }}/importar/linkedin" enctype="multipart/form-data">
+    <input type="file" name="arquivo" accept=".pdf,application/pdf" required>
+    <small>Até {{ limite }}. O arquivo fica guardado na pasta <code>fontes</code> do perfil.</small>
+    <button type="submit">Ler o PDF</button>
+  </form>
+</article>
+
+<p><small>CV antigo (PDF ou DOCX) e texto colado chegam nas próximas etapas desta fase.</small></p>
+
+{% if importacoes %}
+<h2>Importações</h2>
+<div class="overflow-auto">
+<table>
+  <thead><tr><th>Quando</th><th>Fonte</th><th>Arquivo</th><th>Situação</th></tr></thead>
+  <tbody>
+    {% for imp in importacoes %}
+    <tr>
+      <td>{{ imp.criado_em | hora }}</td>
+      <td>{{ FONTES_IMPORTACAO.get(imp.fonte, imp.fonte) }}</td>
+      <td><a href="/p/{{ perfil.slug }}/importacoes/{{ imp.id }}">{{ imp.nome }}</a></td>
+      <td>
+        {% if imp.status == "revisao" %}aguardando revisão
+        {% elif imp.versao_aplicada %}gravada na versão {{ imp.versao_aplicada }}
+        {% else %}concluída sem mudanças{% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endif %}
+{% endblock %}

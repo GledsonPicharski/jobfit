@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block titulo %}Importação · {{ perfil.nome }} · JobFit{% endblock %}
+{% block conteudo %}
+<h1>{{ FONTES_IMPORTACAO.get(importacao.fonte, importacao.fonte) }}: {{ importacao.nome }}</h1>
+<p><small>importado em {{ importacao.criado_em | hora }}
+  {% if importacao.arquivo %} · guardado em <code>{{ importacao.arquivo }}</code>{% endif %}
+  · <a href="/p/{{ perfil.slug }}/importar">voltar</a></small></p>
+
+{% if not aberta %}
+<article class="aviso">
+  {% if importacao.versao_aplicada %}
+  <p>Gravada na versão {{ importacao.versao_aplicada }} do dossiê.
+    <a href="/p/{{ perfil.slug }}/dossie/historico/{{ importacao.versao_aplicada }}">Ver o que mudou</a></p>
+  {% else %}
+  <p>Concluída sem mudanças no dossiê.</p>
+  {% endif %}
+</article>
+{% endif %}
+
+{% if erro %}
+<article class="aviso falha"><p>{{ erro }}</p></article>
+{% endif %}
+
+{% with oob = False %}{% include "_resumo_importacao.html" %}{% endwith %}
+
+{% if not cartoes %}
+<p><strong>Nada novo:</strong> tudo o que veio desta fonte já está no dossiê ou foi rejeitado antes.</p>
+{% endif %}
+
+{% for c in cartoes %}
+{% with oob = False, erro = "" %}{% include "_proposta.html" %}{% endwith %}
+{% endfor %}
+
+{% if aberta %}
+<div class="acoes-importacao">
+  {% if pendentes %}
+  <form method="post" action="/p/{{ perfil.slug }}/importacoes/{{ importacao.id }}/aprovar-pendentes">
+    <button type="submit" class="secondary">Aprovar todas as pendentes</button>
+  </form>
+  {% endif %}
+  <form method="post" action="/p/{{ perfil.slug }}/importacoes/{{ importacao.id }}/gravar">
+    <button type="submit">{% if cartoes %}Gravar no dossiê{% else %}Concluir{% endif %}</button>
+  </form>
+</div>
+<p><small>Gravar cria uma versão nova do dossiê com o que você aprovou ou editou.
+  O que você rejeitar não é proposto de novo em importações futuras.</small></p>
+{% endif %}
+{% endblock %}

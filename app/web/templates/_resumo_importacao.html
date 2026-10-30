@@ -1,0 +1,5 @@
+<p id="resumo-importacao"{% if oob %} hx-swap-oob="true"{% endif %}>
+  {{ cartoes | length }} proposta(s){% if aberta %} · <strong>{{ pendentes }} pendente(s)</strong>{% endif %}
+  · {{ importacao.duplicados }} item(ns) já estavam no dossiê
+  {% if importacao.ja_rejeitados %} · {{ importacao.ja_rejeitados }} já rejeitado(s) antes, não propostos de novo{% endif %}
+</p>

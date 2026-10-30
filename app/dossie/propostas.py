@@ -268,6 +268,12 @@ def obter_importacao(engine: Engine, importacao_id: int) -> Importacao | None:
         return sessao.get(Importacao, importacao_id)
 
 
+def listar_importacoes(engine: Engine) -> list[Importacao]:
+    with Session(engine) as sessao:
+        consulta = select(Importacao).order_by(Importacao.criado_em.desc(), Importacao.id.desc())
+        return list(sessao.exec(consulta))
+
+
 def importacoes_em_revisao(engine: Engine) -> list[Importacao]:
     with Session(engine) as sessao:
         consulta = select(Importacao).where(Importacao.status == "revisao")
