@@ -29,6 +29,13 @@ def sem_acento(texto: str) -> str:
     return unicodedata.normalize("NFKD", texto).encode("ascii", "ignore").decode("ascii")
 
 
+def normalizar_tipo(valor: Any) -> Any:
+    """Quem edita à mão escreve "Competência" ou "formação"; o código usa sem acento."""
+    if isinstance(valor, str):
+        return sem_acento(valor).strip().lower().replace(" ", "_")
+    return valor
+
+
 class Periodo(BaseModel):
     """Datas ISO parciais (`2023`, `2023-03`, `2023-03-15`); `fim` vazio quer dizer atual."""
 
@@ -68,13 +75,7 @@ class Fato(BaseModel):
     privado: bool = False
     nao_enviar_ia: bool = False
 
-    @field_validator("tipo", mode="before")
-    @classmethod
-    def _tipo(cls, valor: Any) -> Any:
-        # Quem edita à mão escreve "Competência" ou "formação"; o código usa sem acento.
-        if isinstance(valor, str):
-            return sem_acento(valor).strip().lower().replace(" ", "_")
-        return valor
+    _tipo = field_validator("tipo", mode="before")(normalizar_tipo)
 
     @field_validator("texto")
     @classmethod
