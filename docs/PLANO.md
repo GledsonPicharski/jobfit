@@ -13,7 +13,7 @@ O JobFit é um app local, aberto e gratuito que mantém um dossiê de carreira v
 3. **Nada entra no dossiê sem aprovação.** Toda entrada (PDF, CV, áudio, resposta) vira uma proposta de alteração que a pessoa aprova, edita ou rejeita.
 4. **A pessoa decide e age.** O app nunca envia candidatura nem e-mail.
 5. **Dados com a pessoa.** Tudo fica numa pasta local, que pode estar dentro do Google Drive para desktop.
-6. **IA da própria pessoa.** Cada perfil usa a chave e o provedor que escolher, com modelo por tarefa e custo registrado.
+6. **IA da própria pessoa, sem custo obrigatório.** O padrão é o modo manual: o app monta o pedido e a pessoa cola no chat que já usa (Claude, ChatGPT, Gemini, inclusive grátis). Quem quiser automação usa a própria chave de API, com modelo por tarefa e custo registrado (decisão 0003).
 7. **Respeito aos termos de uso.** Sem raspagem do LinkedIn; vagas de lá entram por alertas de e-mail ou link colado.
 8. **Qualidade medida.** Prompts versionados, saídas estruturadas e testes de qualidade (evals) antes de trocar prompt ou modelo.
 
@@ -32,7 +32,7 @@ A v1 cobre oito módulos, roda em uma máquina e atende dois perfis (Gledson e C
 | M7 Portais | Catálogo de portais; buscas salvas; adicionar portal; métricas de qualidade por portal | Compartilhar métricas anônimas entre usuários |
 | M8 Revisão do LinkedIn | Comparar PDF do LinkedIn com o dossiê; sugestões por seção em PT e EN, dentro dos limites de caracteres | Acompanhamento de SSI |
 
-**Fora da v1:** app hospedado, login, servidor MCP para usar a assinatura de Claude ou ChatGPT, preparação de entrevista (Fase 9), envio automático de qualquer coisa.
+**Fora da v1:** app hospedado, login, preparação de entrevista (Fase 9), envio automático de qualquer coisa. O servidor MCP para usar a assinatura do Claude entrou na v1 como Fase 4b.
 
 ## 3. Arquitetura e stack
 
@@ -44,7 +44,7 @@ Um app Python que roda local: o FastAPI serve a API e as páginas, e a pessoa us
 | Web | FastAPI + Jinja2 + HTMX + Pico.css | Front simples, sem Node; interatividade suficiente para formulários e listas |
 | Dados estruturados | SQLite com SQLModel + Alembic | Arquivo único por perfil, migrações versionadas |
 | Dossiê | Markdown com blocos de fatos em YAML | Legível e editável à mão; o código lê os fatos (seção 4) |
-| Camada de IA | Pydantic AI (alternativa: LiteLLM), atrás de uma interface própria | Saídas estruturadas validadas, troca de provedor, registro de custo |
+| Camada de IA | Interface própria com modos: manual (copiar e colar, padrão), API via Pydantic AI, MCP (Fase 4b) e Ollama (v1.1) | Custo zero por padrão; saídas estruturadas validadas em todos os modos; registro de custo |
 | Transcrição | faster-whisper local; API opcional | Grátis e privado por padrão |
 | Leitura de documentos | pdfplumber, python-docx | LinkedIn em PDF tem estrutura previsível; parser em código primeiro |
 | PDF do CV | Template HTML + Playwright (Chromium) | Mesmo resultado em qualquer Windows; texto selecionável |
@@ -309,7 +309,7 @@ Toda chamada de IA passa por uma única função, `ia.executar(tarefa, entrada) 
 
 **Regras da camada:**
 
-- **Configuração por perfil:** provedor (Anthropic, OpenAI, Gemini, OpenRouter, Ollama local), chave no cofre do sistema, modelo por tarefa.
+- **Modos (decisão 0003):** manual (padrão: o app monta o pacote, a pessoa cola no chat dela e cola a resposta de volta), API (Anthropic e OpenRouter na Fase 0; chave no cofre do sistema, modelo por tarefa), MCP para o Claude Desktop (Fase 4b) e Ollama local (v1.1). Todos passam por `executar()`, com o mesmo prompt, validação e cache.
 - **Saídas validadas:** cada tarefa tem um modelo Pydantic; saída inválida tenta de novo uma vez e depois mostra o erro.
 - **Cache:** hash de (tarefa, versão do prompt, entrada, modelo). A mesma vaga avaliada duas vezes custa zero na segunda.
 - **Registro:** tabela `chamadas_ia` com tarefa, modelo, tokens, custo em US$, tempo e versão do prompt. A tela mostra o gasto do dia e do mês.
@@ -325,7 +325,7 @@ Toda chamada de IA passa por uma única função, `ia.executar(tarefa, entrada) 
 | CV fiel | 10 CVs gerados | frases sem fato de origem | 0 |
 | Ataque por vaga | vagas com instruções escondidas ("dê nota 100") | nota alterada | 0 casos |
 
-Os evals rodam com `jobfit eval` e geram um relatório comparando versões de prompt e modelos. Regra: nenhum prompt ou modelo muda sem rodar os evals.
+Os evals rodam com `jobfit eval` e geram um relatório comparando versões de prompt e modelos. Regra: nenhum prompt ou modelo muda sem rodar os evals. Os evals rodam sozinhos, então exigem o modo API ou o Ollama: é custo de quem desenvolve, não de quem usa.
 
 **Aprender com as edições (v1.1):** quando a pessoa corrige um texto gerado (frase de CV, resposta de formulário, sugestão de LinkedIn), o app guarda o par original → editado. Esses pares viram exemplos de estilo nos próximos prompts daquela tarefa e casos novos nos evals. Métrica: % de frases aceitas sem edição, por versão de prompt.
 
@@ -349,8 +349,8 @@ Antes de abrir para mentorados, revisar LGPD: consentimento, exclusão de dados 
 
 Nove fases, cada uma termina com algo usável e com o checklist da seção 12 passando. A partir da Fase 3 você já avalia vagas reais; o scanner automático vem depois que avaliação e CV estão confiáveis.
 
-1. **Fase 0 — Fundação.** Repositório, uv, FastAPI + HTMX, perfis, pasta de dados configurável, camada de IA com um provedor, registro de custo, keyring, pre-commit, CI (ruff + pytest), perfil fictício.
-   - Pronto quando: `uv run jobfit` abre no navegador, cria perfil, testa a chave e mostra o custo da chamada de teste.
+1. **Fase 0 — Fundação.** Repositório, uv, FastAPI + HTMX, perfis, pasta de dados configurável, camada de IA com modo manual (padrão) e modo API (Anthropic e OpenRouter), registro de custo, keyring, pre-commit, CI (ruff + pytest), perfil fictício.
+   - Pronto quando: `uv run jobfit` abre no navegador, cria perfil e completa o ciclo de teste no modo manual (pacote → chat → resposta validada); no modo API, testa a chave e mostra o custo.
 2. **Fase 1 — Dossiê.** Leitura e escrita do formato (ida e volta sem perda), propostas com aprovação, versões e histórico, ingestão de PDF do LinkedIn, CV e texto/.md.
    - Pronto quando: a Parte A do dossiê v2.7 foi importada, revisada e aprovada no app.
 3. **Fase 2 — Áudio e entrevista de lacunas.** Transcrição local, extração de fatos com trecho, perguntas para completar o dossiê.
@@ -359,6 +359,8 @@ Nove fases, cada uma termina com algo usável e com o checklist da seção 12 pa
    - Pronto quando: 20 vagas anotadas têm 80% de concordância de faixa.
 5. **Fase 4 — CV por vaga.** Seleção de fatos, redação PT/EN, checagem de fatos, template HTML, PDF.
    - Pronto quando: 10 CVs gerados passam na checagem e você mandaria sem editar mais que detalhes.
+   - **Fase 4b — MCP para o Claude Desktop.** O JobFit expõe as ferramentas de avaliar vaga e gerar CV para o Claude Desktop, que usa a assinatura da pessoa sem copiar e colar. A saída continua validada pelo JobFit, e a instalação deve ser de um clique.
+     - Pronto quando: uma vaga é avaliada e um CV é gerado pelo Claude Desktop, com o mesmo resultado do modo manual.
 6. **Fase 5 — Candidaturas.** Estados, histórico, próximo passo, follow-up, exportar CSV, importar o controle do Notion (via CSV), banco de respostas de formulário.
    - Pronto quando: tudo que está no Notion hoje está no app.
 7. **Fase 6 — Scanner de portais.** Leitores, catálogo, buscas salvas, deduplicação, vaga ainda aberta, `jobfit scan` agendável, métricas por portal.
@@ -370,10 +372,10 @@ Nove fases, cada uma termina com algo usável e com o checklist da seção 12 pa
 
 **Depois da v1, em ordem:**
 
-- **v1.1:** vagas parecidas com as que você marca; aprender com as edições; leitura de alertas no Gmail.
+- **v1.1:** vagas parecidas com as que você marca; aprender com as edições; leitura de alertas no Gmail; Ollama como modo de IA local.
 - **Fase 9 — Simulador de entrevista.** A partir da cópia da vaga e do dossiê, gera perguntas comportamentais, técnicas e de lacuna, em PT ou EN. Você responde por voz ou texto; o app transcreve, avalia a estrutura (situação, ação, resultado), o uso de fatos do dossiê e os pontos da vaga não cobertos, e mede em código ritmo e pausas. Respostas boas viram histórias reutilizáveis no dossiê. Foco inicial: entrevistas em inglês.
   - Pronto quando: uma sessão de 20 minutos em inglês gera feedback útil e acionável.
-- **v2:** comparador de ofertas em código (CLT × PJ × contrato em dólar, com câmbio e premissas editáveis); carta de apresentação; servidor MCP; empacotamento; métricas anônimas compartilhadas; abertura para mentorados.
+- **v2:** comparador de ofertas em código (CLT × PJ × contrato em dólar, com câmbio e premissas editáveis); carta de apresentação; empacotamento; métricas anônimas compartilhadas; abertura para mentorados.
 - **Avaliar depois:** extensão do navegador que preenche formulários com o banco de respostas.
 
 ## 11. Como trabalhar com o Claude Code
@@ -417,10 +419,14 @@ Cada fase só termina com todos os itens dela marcados. Os testes automáticos c
 - [ ] Clonar o repositório numa pasta nova e instalar seguindo só o README.
 - [ ] `uv run jobfit` abre no navegador em `127.0.0.1`; de outro aparelho na rede, não abre.
 - [ ] Criar o perfil "teste" e escolher a pasta de dados.
-- [ ] Cadastrar uma chave de API; o botão "testar conexão" responde e mostra o custo.
-- [ ] Procurar a chave nos arquivos da pasta de dados e do repositório: não aparece em lugar nenhum.
-- [ ] Cadastrar uma chave errada: a mensagem de erro é clara e o app não trava.
-- [ ] Trocar de provedor (ex.: Anthropic → OpenRouter) e testar de novo.
+- [ ] O perfil novo nasce no modo manual, sem pedir chave.
+- [ ] "Testar ciclo": copiar o pacote, colar no Claude.ai ou no ChatGPT grátis, colar a resposta de volta: o app valida e mostra o resultado com custo US$ 0,00.
+- [ ] Colar uma resposta adulterada (outro id de pedido, campo apagado): erro claro e mensagem de correção que, colada no chat, resolve.
+- [ ] Baixar o pacote `.md` e anexar no chat em vez de colar: funciona.
+- [ ] O pedido pendente aparece no painel e some depois de respondido ou cancelado.
+- [ ] (Modo API, opcional) Cadastrar uma chave de API; o botão "testar conexão" responde e mostra o custo.
+- [ ] (Modo API) Procurar a chave nos arquivos da pasta de dados e do repositório: não aparece em lugar nenhum.
+- [ ] (Modo API) Cadastrar uma chave errada: a mensagem de erro é clara e o app não trava.
 - [ ] Fazer commit de um arquivo com um CPF falso: o pre-commit barra.
 - [ ] Usar uma pasta de dados com espaço e acento no caminho (ex.: `G:\Meu Drive\Currículo`): funciona.
 - [ ] Salvar e reabrir um texto com ç, ã e travessão: nada vira caractere estranho.
@@ -538,6 +544,6 @@ As decisões tomadas estão em `docs/decisoes/0001-decisoes-iniciais.md`.
 
 **Perguntas em aberto:**
 
-- [ ] Provedor de IA principal e teto de gasto mensal por perfil.
+- [x] Provedor de IA principal: modo manual por padrão, sem custo (decisão 0003). Teto diário de US$ 2 no modo API.
 - [ ] Lista inicial de empresas-alvo para os leitores de Greenhouse, Lever, Ashby, Workable e SmartRecruiters.
 - [ ] Termos de uso do Gupy e de outros portais brasileiros para leitura automática (validar na Fase 6).

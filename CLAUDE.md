@@ -15,7 +15,7 @@ App local, aberto e gratuito de evolução de carreira. Mantém um dossiê vivo 
 - Python 3.12, gerenciado com `uv` (`uv add`, `uv run`). Nunca usar pip direto.
 - FastAPI + Jinja2 + HTMX + Pico.css. Sem Node, sem etapa de build no front.
 - SQLite com SQLModel; migrações com Alembic.
-- Camada de IA própria em `app/ia/` (Pydantic AI por baixo). Nenhum outro módulo chama provedor de IA diretamente.
+- Camada de IA própria em `app/ia/`, com modos (decisão 0003): manual/copiar e colar (padrão), API via Pydantic AI, MCP (Fase 4b) e Ollama (v1.1). Nenhum outro módulo chama provedor de IA diretamente nem sabe qual modo está ativo.
 - Transcrição: faster-whisper. PDF: template HTML + Playwright. Portais: httpx, feedparser, selectolax.
 - CLI com Typer: `jobfit`, `jobfit scan`, `jobfit eval`, `jobfit backup`.
 - Testes: pytest. Lint e formatação: ruff.
