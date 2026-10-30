@@ -360,3 +360,20 @@ def test_cv_que_nao_e_pdf_nem_docx(cliente, ana, pasta_dados):
     assert resposta.status_code == 400
     assert ".docx ou PDF" in resposta.text
     assert not list((pasta_perfil(pasta_dados, "ana") / "fontes").iterdir())
+
+
+def test_formulario_do_navegador_manda_o_campo_de_arquivo_vazio(cliente, ana):
+    resposta = cliente.post(
+        "/p/ana/importar/texto",
+        data={"texto": TEXTO, "nome": ""},
+        files={"arquivo": ("", b"", "application/octet-stream")},
+        follow_redirects=False,
+    )
+    assert resposta.headers["location"] == "/p/ana/importacoes/1/extrair"
+    assert obter_importacao(_engine(), 1).nome == "Texto colado"
+
+
+def test_pdf_no_campo_de_texto_e_recusado(cliente, ana):
+    resposta = _enviar_md(cliente, gerar_cv_pdf(), nome="cv.md")
+    assert resposta.status_code == 400
+    assert "não é texto" in resposta.text

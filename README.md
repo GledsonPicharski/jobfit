@@ -2,7 +2,9 @@
 
 **Living career dossier.** Um app local, aberto e gratuito que mantém um dossiê de carreira vivo e o usa para avaliar vagas, gerar um CV por vaga e controlar candidaturas, sem inventar nada e sem enviar nada por você.
 
-> Status: em construção (Fase 0: fundação). O plano completo está em [`docs/PLANO.md`](docs/PLANO.md).
+> Status: em construção (Fase 1: dossiê). O plano completo está em [`docs/PLANO.md`](docs/PLANO.md).
+
+**Já funciona:** perfis, a camada de IA (modo manual ou API) e o dossiê. O dossiê é um `dossie.md` legível, com versões e diff. Dá para importar para ele o PDF do LinkedIn (lido em código), um CV antigo em PDF ou DOCX, um texto colado ou um `.md` escolhendo as seções. Tudo vira proposta para revisar, e nada entra sem aprovação.
 
 ## O que ele faz
 

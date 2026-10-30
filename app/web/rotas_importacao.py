@@ -123,6 +123,10 @@ def _texto_enviado(
     """(texto, nome para a tela, nome do arquivo em fontes/, bytes a guardar)."""
     if arquivo is not None and arquivo.filename:
         conteudo = ler_enviado(arquivo.file)
+        if b"\x00" in conteudo[:4096] or conteudo.startswith((b"%PDF", b"PK\x03\x04")):
+            raise ErroArquivo(
+                400, "Este arquivo não é texto. PDF e DOCX vão em CV antigo ou PDF do LinkedIn."
+            )
         return decodificar(conteudo), arquivo.filename, arquivo.filename, conteudo
     texto = decodificar(texto.encode("utf-8"))  # o navegador manda CRLF
     if not texto.strip():
