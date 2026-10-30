@@ -11,10 +11,11 @@ from pydantic_ai.exceptions import (
 from sqlmodel import Session, select
 
 from app.db import banco_do_perfil
-from app.ia import ErroIA, TetoAtingido, executar, executar_detalhado
+from app.ia import AguardandoResposta, ErroIA, TetoAtingido, executar, executar_detalhado
+from app.ia.manual import responder_pedido
 from app.ia.modelos import ChamadaIA
 from app.ia.tarefas import TESTAR_CONEXAO
-from app.perfis.modelos import Perfil
+from app.perfis.modelos import MODELOS_PADRAO, ConfigIA, Perfil
 from tests.ia_falsa import Falso
 
 pytestmark = pytest.mark.anyio
@@ -27,7 +28,10 @@ def anyio_backend():
 
 @pytest.fixture
 def perfil() -> Perfil:
-    return Perfil(slug="ana", nome="Ana", criado_em=datetime.now(UTC))
+    """Perfil no modo API (Anthropic); o modo manual tem testes próprios no fim do arquivo."""
+    return Perfil(
+        slug="ana", nome="Ana", criado_em=datetime.now(UTC), ia=ConfigIA().com_provedor("anthropic")
+    )
 
 
 @pytest.fixture
@@ -187,3 +191,74 @@ async def test_custo_desconhecido_fica_nulo(perfil, engine, usar_modelo):
     usar_modelo(Falso(custo=None))
     resultado = await executar_detalhado(perfil, TESTAR_CONEXAO, "ping", engine=engine)
     assert resultado.chamada.custo_micro_usd is None
+
+
+# --- modo manual --------------------------------------------------------------
+
+
+@pytest.fixture
+def perfil_manual() -> Perfil:
+    return Perfil(slug="ana", nome="Ana", criado_em=datetime.now(UTC))
+
+
+@pytest.fixture
+def sem_modelo(monkeypatch):
+    def proibido(*_):
+        raise AssertionError("o modo manual não pode montar modelo de API")
+
+    monkeypatch.setattr("app.ia.execucao.montar_modelo", proibido)
+
+
+def _resposta_do_chat(pedido_id: str) -> str:
+    return (
+        '```json\n{"pedido": "' + pedido_id + '", '
+        '"resposta": {"ok": true, "mensagem": "Funcionou pelo chat."}}\n```'
+    )
+
+
+async def test_manual_cria_pedido_sem_chave_e_sem_modelo(perfil_manual, engine, sem_modelo):
+    with pytest.raises(AguardandoResposta) as info:
+        await executar(perfil_manual, TESTAR_CONEXAO, "ping", engine=engine)
+    pedido = info.value.pedido
+    assert pedido.status == "pendente"
+    assert (pedido.provedor, pedido.modelo) == ("manual", MODELOS_PADRAO["manual"]["barato"])
+    assert _chamadas(engine) == []
+
+
+async def test_manual_reaproveita_o_pedido_pendente(perfil_manual, engine, sem_modelo):
+    ids = set()
+    for _ in range(2):
+        with pytest.raises(AguardandoResposta) as info:
+            await executar(perfil_manual, TESTAR_CONEXAO, "ping", engine=engine)
+        ids.add(info.value.pedido.id)
+    assert len(ids) == 1
+
+
+async def test_manual_ignora_o_teto(perfil_manual, engine, sem_modelo):
+    with Session(engine) as sessao:
+        sessao.add(
+            ChamadaIA(
+                tarefa="t", versao_prompt=1, provedor="p", modelo="m", custo_micro_usd=9_000_000
+            )
+        )
+        sessao.commit()
+    with pytest.raises(AguardandoResposta):
+        await executar(perfil_manual, TESTAR_CONEXAO, "ping", engine=engine)
+
+
+async def test_manual_depois_de_responder_vem_do_cache(perfil_manual, engine, sem_modelo):
+    with pytest.raises(AguardandoResposta) as info:
+        await executar(perfil_manual, TESTAR_CONEXAO, "ping", engine=engine)
+    pedido_id = info.value.pedido.id
+
+    responder_pedido(engine, pedido_id, _resposta_do_chat(pedido_id))
+    saida = await executar(perfil_manual, TESTAR_CONEXAO, "ping", engine=engine)
+
+    assert saida.mensagem == "Funcionou pelo chat."
+    respondida, cacheada = _chamadas(engine)
+    assert (respondida.provedor, respondida.custo_micro_usd, respondida.cache_hit) == (
+        "manual",
+        0,
+        False,
+    )
+    assert cacheada.cache_hit and cacheada.custo_micro_usd == 0

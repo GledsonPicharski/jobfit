@@ -1,8 +1,12 @@
 """`executar()`: a única porta de saída para provedores de IA.
 
-Ordem: cache → teto diário → modelo do provedor → prompt versionado → chamada com
-saída validada (uma nova tentativa se vier inválida) → registro de custo → cache.
+Ordem: cache → (modo manual: pedido e `AguardandoResposta`) → teto diário → modelo do
+provedor → prompt versionado → chamada com saída validada (uma nova tentativa se vier
+inválida) → registro de custo → cache.
 Toda chamada que chega ao provedor é registrada em `chamadas_ia`, com sucesso ou erro.
+
+No modo manual, a resposta chega pelo cache: a funcionalidade roda de novo depois que a
+pessoa cola a resposta. Por isso, quem precisa do resultado deve usar `usar_cache=True`.
 """
 
 import time
@@ -26,7 +30,8 @@ from sqlmodel import Session
 
 from app.ia.cache import chave_cache, gravar_cache, ler_cache
 from app.ia.custos import checar_teto, para_micro_usd
-from app.ia.erros import ErroIA
+from app.ia.erros import AguardandoResposta, ErroIA
+from app.ia.manual import criar_ou_reaproveitar_pedido
 from app.ia.modelos import ChamadaIA
 from app.ia.prompts import carregar_prompt
 from app.ia.provedores import montar_modelo
@@ -125,6 +130,12 @@ async def executar_detalhado[S: BaseModel](
             return ResultadoIA(
                 saida, registrar(engine, nova_chamada(custo_micro_usd=0, cache_hit=True))
             )
+
+    if provedor == "manual":
+        pedido = criar_ou_reaproveitar_pedido(
+            engine, tarefa, chave, entrada, provedor=provedor, modelo=modelo
+        )
+        raise AguardandoResposta(pedido)
 
     checar_teto(engine, perfil.ia.teto_diario_usd)
     agente = Agent(

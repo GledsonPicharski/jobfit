@@ -6,8 +6,8 @@ from fastapi.testclient import TestClient
 
 from app import config
 from app.main import create_app
-from app.perfis.modelos import MODELOS_PADRAO
-from app.perfis.servico import carregar_perfil, criar_perfil
+from app.perfis.modelos import MODELOS_PADRAO, ConfigIA
+from app.perfis.servico import carregar_perfil, criar_perfil, salvar_perfil
 from tests.ia_falsa import Falso
 
 ORIGEM = "http://127.0.0.1:8765"
@@ -20,7 +20,16 @@ def cliente():
 
 @pytest.fixture
 def ana(pasta_dados):
+    """Perfil novo: nasce no modo manual."""
     return criar_perfil(pasta_dados, "Ana Exemplo")
+
+
+@pytest.fixture
+def ana_api(ana, pasta_dados):
+    """Mesmo perfil, no modo API (Anthropic)."""
+    perfil = ana.model_copy(update={"ia": ConfigIA().com_provedor("anthropic")})
+    salvar_perfil(pasta_dados, perfil)
+    return perfil
 
 
 def test_primeira_execucao_pede_a_pasta(cliente):
@@ -88,7 +97,7 @@ def test_salvar_chave_vai_para_o_cofre_e_nao_para_arquivo(cliente, ana, pasta_da
             assert chave.encode() not in arquivo.read_bytes(), arquivo
 
 
-def test_trocar_provedor_troca_modelos_padrao(cliente, ana, pasta_dados):
+def test_trocar_provedor_troca_modelos_padrao(cliente, ana_api, pasta_dados):
     dados = {
         "provedor": "openrouter",
         "teto": "2,50",
@@ -111,7 +120,7 @@ def test_teto_invalido_mostra_erro(cliente, ana, pasta_dados, teto):
     assert carregar_perfil(pasta_dados, "ana-exemplo").ia.teto_diario_usd == Decimal("2.00")
 
 
-def test_testar_conexao_mostra_resposta_e_custo(cliente, ana, usar_modelo):
+def test_testar_conexao_mostra_resposta_e_custo(cliente, ana_api, usar_modelo):
     usar_modelo(Falso())
     resposta = cliente.post("/p/ana-exemplo/ia/testar")
 
@@ -121,13 +130,13 @@ def test_testar_conexao_mostra_resposta_e_custo(cliente, ana, usar_modelo):
     assert "<html" not in resposta.text  # fragmento HTMX, não página inteira
 
 
-def test_testar_conexao_sem_chave_mostra_erro_claro(cliente, ana):
+def test_testar_conexao_sem_chave_mostra_erro_claro(cliente, ana_api):
     resposta = cliente.post("/p/ana-exemplo/ia/testar")
     assert "Não funcionou" in resposta.text
     assert "Nenhuma chave do Anthropic" in resposta.text
 
 
-def test_testar_conexao_com_chave_errada_mostra_erro_claro(cliente, ana, usar_modelo):
+def test_testar_conexao_com_chave_errada_mostra_erro_claro(cliente, ana_api, usar_modelo):
     from pydantic_ai.exceptions import ModelHTTPError
 
     usar_modelo(Falso(ModelHTTPError(401, "falso")))
@@ -136,7 +145,7 @@ def test_testar_conexao_com_chave_errada_mostra_erro_claro(cliente, ana, usar_mo
     assert "Chave inválida" in resposta.text
 
 
-def test_painel_mostra_gasto_do_dia(cliente, ana, usar_modelo):
+def test_painel_mostra_gasto_do_dia(cliente, ana_api, usar_modelo):
     assert "Nenhuma chamada de IA ainda" in cliente.get("/p/ana-exemplo").text
 
     usar_modelo(Falso())
@@ -148,7 +157,7 @@ def test_painel_mostra_gasto_do_dia(cliente, ana, usar_modelo):
     assert "testar_conexao v1" in painel
 
 
-def test_testar_conexao_nao_usa_cache(cliente, ana, usar_modelo):
+def test_testar_conexao_nao_usa_cache(cliente, ana_api, usar_modelo):
     falso = usar_modelo(Falso())
     cliente.post("/p/ana-exemplo/ia/testar")
     cliente.post("/p/ana-exemplo/ia/testar")

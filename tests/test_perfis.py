@@ -83,10 +83,19 @@ def test_trocar_provedor_troca_modelos_padrao():
 
 
 def test_trocar_provedor_mantem_modelos_personalizados():
-    ia = ConfigIA(modelos={"barato": "meu-modelo", "forte": "claude-sonnet-5-5"})
+    ia = ConfigIA().com_provedor("anthropic")
+    ia.modelos["barato"] = "meu-modelo"
     nova = ia.com_provedor("openrouter")
     assert nova.modelos["barato"] == "meu-modelo"
     assert nova.modelos["forte"] == MODELOS_PADRAO["openrouter"]["forte"]
+
+
+def test_perfil_novo_nasce_no_modo_manual_sem_chave():
+    ia = ConfigIA()
+    assert ia.provedor == "manual"
+    assert not ia.precisa_chave
+    assert ia.com_provedor("anthropic").modelos == MODELOS_PADRAO["anthropic"]
+    assert ia.com_provedor("anthropic").precisa_chave
 
 
 def test_perfil_ficticio_do_repositorio_e_valido():

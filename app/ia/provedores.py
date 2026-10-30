@@ -10,6 +10,8 @@ if TYPE_CHECKING:
 
 def montar_modelo(perfil: Perfil, nivel: Nivel) -> "Model":
     provedor = perfil.ia.provedor
+    if provedor == "manual":
+        raise ValueError("O modo manual não usa modelo de API; executar() trata antes.")
     nome = perfil.ia.modelos[nivel]
     chave = ler_chave(perfil.slug, provedor)
     if not chave:
