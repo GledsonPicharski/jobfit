@@ -1,24 +1,33 @@
-"""Telas da Fase 0: pasta de dados, perfis, configuração de IA e teste de conexão.
+"""Telas da Fase 0: pasta de dados, perfis, configuração de IA, teste e pedidos do modo manual.
 
 Toda tela de perfil fica sob `/p/{slug}/`, para nenhuma misturar dados de dois perfis.
 """
 
+import contextlib
 from pathlib import Path
 from typing import Annotated
+from urllib.parse import urlsplit
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from sqlmodel import Session, select
 
 from app import config
 from app.db import banco_do_perfil
-from app.ia import ErroIA, executar_detalhado
+from app.ia import (
+    AguardandoResposta,
+    ErroIA,
+    PedidoIndisponivel,
+    RespostaInvalida,
+    executar_detalhado,
+)
 from app.ia.chaves import salvar_chave, tem_chave
 from app.ia.custos import gasto_do_dia, gasto_do_mes, para_micro_usd
-from app.ia.modelos import ChamadaIA
+from app.ia.manual import cancelar_pedido, obter_pedido, pedidos_pendentes, responder_pedido
+from app.ia.modelos import ChamadaIA, PedidoIA
 from app.ia.tarefas import TESTAR_CONEXAO
-from app.perfis.modelos import MODELOS_PADRAO, PROVEDORES, Perfil, Provedor
+from app.perfis.modelos import MODELOS_PADRAO, PROVEDORES, PROVEDORES_COM_CHAVE, Perfil, Provedor
 from app.perfis.servico import (
     ErroPerfil,
     carregar_perfil,
@@ -34,6 +43,7 @@ templates = Jinja2Templates(directory=PASTA_TEMPLATES)
 templates.env.filters["usd"] = formatar_usd
 templates.env.filters["hora"] = formatar_hora_local
 templates.env.globals["PROVEDORES"] = PROVEDORES
+templates.env.globals["PROVEDORES_COM_CHAVE"] = PROVEDORES_COM_CHAVE
 
 router = APIRouter()
 
@@ -139,7 +149,9 @@ def painel(request: Request, perfil: PerfilAtual):
             "gasto_dia": gasto_do_dia(engine),
             "gasto_mes": gasto_do_mes(engine),
             "teto_micro": para_micro_usd(perfil.ia.teto_diario_usd),
-            "tem_chave": tem_chave(perfil.slug, perfil.ia.provedor),
+            "falta_chave": perfil.ia.precisa_chave
+            and not tem_chave(perfil.slug, perfil.ia.provedor),
+            "pendentes": pedidos_pendentes(engine),
             "recentes": recentes,
         },
     )
@@ -148,7 +160,7 @@ def painel(request: Request, perfil: PerfilAtual):
 def _tela_ia(request: Request, perfil: Perfil, **extra) -> HTMLResponse:
     contexto = {
         "perfil": perfil,
-        "chaves": {p: tem_chave(perfil.slug, p) for p in PROVEDORES},
+        "chaves": {p: tem_chave(perfil.slug, p) for p in PROVEDORES_COM_CHAVE},
         "padroes": MODELOS_PADRAO[perfil.ia.provedor],
         **extra,
     }
@@ -193,17 +205,21 @@ def salvar_ia(
     if provedor != perfil.ia.provedor:
         ia = ia.com_provedor(provedor)
     salvar_perfil(pasta, perfil.model_copy(update={"ia": ia}))
-    if chave.strip():
+    if chave.strip() and provedor in PROVEDORES_COM_CHAVE:
         salvar_chave(perfil.slug, provedor, chave)
     return _ir(f"/p/{perfil.slug}/ia?salvo=1")
 
 
 @router.post("/p/{slug}/ia/testar", response_class=HTMLResponse)
 async def testar_conexao(request: Request, perfil: PerfilAtual):
+    engine = banco_do_perfil(perfil.slug)
     try:
         resultado = await executar_detalhado(
-            perfil, TESTAR_CONEXAO, "ping", engine=banco_do_perfil(perfil.slug), usar_cache=False
+            perfil, TESTAR_CONEXAO, "ping", engine=engine, usar_cache=False
         )
+    except AguardandoResposta as aguardando:
+        # Modo manual: o resultado do teste aparece na própria tela do pedido, sem "voltar".
+        return _ir(f"/p/{perfil.slug}/pedidos/{aguardando.pedido.id}")
     except ErroIA as erro:
         return templates.TemplateResponse(request, "_resultado_teste.html", {"erro": erro.mensagem})
     return templates.TemplateResponse(
@@ -211,3 +227,95 @@ async def testar_conexao(request: Request, perfil: PerfilAtual):
         "_resultado_teste.html",
         {"saida": resultado.saida, "chamada": resultado.chamada},
     )
+
+
+# --- pedidos do modo manual ---------------------------------------------------
+
+
+def voltar_seguro(slug: str, voltar: str) -> str | None:
+    """Só caminhos do próprio perfil: evita redirecionar para fora do app."""
+    partes = urlsplit(voltar)
+    if partes.scheme or partes.netloc or "\\" in voltar:
+        return None
+    if partes.path != f"/p/{slug}" and not partes.path.startswith(f"/p/{slug}/"):
+        return None
+    return voltar
+
+
+def _obter_pedido(perfil: Perfil, pedido_id: str) -> PedidoIA:
+    pedido = obter_pedido(banco_do_perfil(perfil.slug), pedido_id)
+    if pedido is None:
+        raise HTTPException(404, "Pedido não encontrado.")
+    return pedido
+
+
+def _tela_pedido(
+    request: Request, perfil: Perfil, pedido: PedidoIA, status_code: int = 200, **extra
+) -> HTMLResponse:
+    return templates.TemplateResponse(
+        request,
+        "pedido.html",
+        {"perfil": perfil, "pedido": pedido, **extra},
+        status_code=status_code,
+    )
+
+
+@router.get("/p/{slug}/pedidos/{pedido_id}", response_class=HTMLResponse)
+def ver_pedido(request: Request, perfil: PerfilAtual, pedido_id: str, voltar: str = ""):
+    pedido = _obter_pedido(perfil, pedido_id)
+    return _tela_pedido(request, perfil, pedido, voltar=voltar_seguro(perfil.slug, voltar) or "")
+
+
+@router.get("/p/{slug}/pedidos/{pedido_id}/pacote.md")
+def baixar_pacote(perfil: PerfilAtual, pedido_id: str):
+    pedido = _obter_pedido(perfil, pedido_id)
+    return Response(
+        pedido.pacote.encode("utf-8"),
+        media_type="text/markdown; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="jobfit-{pedido.id}.md"'},
+    )
+
+
+@router.post("/p/{slug}/pedidos/{pedido_id}/resposta", response_class=HTMLResponse)
+def responder(
+    request: Request,
+    perfil: PerfilAtual,
+    pedido_id: str,
+    resposta: Annotated[str, Form()],
+    voltar: Annotated[str, Form()] = "",
+):
+    engine = banco_do_perfil(perfil.slug)
+    pedido = _obter_pedido(perfil, pedido_id)
+    destino = voltar_seguro(perfil.slug, voltar)
+    try:
+        resultado = responder_pedido(engine, pedido.id, resposta)
+    except RespostaInvalida as erro:
+        return _tela_pedido(
+            request,
+            perfil,
+            _obter_pedido(perfil, pedido_id),
+            400,
+            erro=erro.mensagem,
+            correcao=erro.correcao,
+            resposta=resposta,
+            voltar=destino or "",
+        )
+    except PedidoIndisponivel as erro:
+        return _tela_pedido(request, perfil, pedido, 400, erro=erro.mensagem)
+    if destino:
+        return _ir(destino)
+    return _tela_pedido(
+        request,
+        perfil,
+        _obter_pedido(perfil, pedido_id),
+        saida=resultado.saida,
+        chamada=resultado.chamada,
+    )
+
+
+@router.post("/p/{slug}/pedidos/{pedido_id}/cancelar")
+def cancelar(perfil: PerfilAtual, pedido_id: str):
+    pedido = _obter_pedido(perfil, pedido_id)
+    with contextlib.suppress(PedidoIndisponivel):  # já respondido ou cancelado: nada a fazer
+        cancelar_pedido(banco_do_perfil(perfil.slug), pedido.id)
+    return _ir(f"/p/{perfil.slug}")

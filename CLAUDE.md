@@ -84,3 +84,5 @@ Os dois usuários usam Windows. Desenvolver e testar pensando nele:
 - Teste que precisa de CPF, e-mail real ou valor em R$ monta o dado em tempo de execução; escrito literal, o pre-commit barra o próprio teste.
 - No Git Bash, `curl` manda argumentos com acento em cp1252. Teste UTF-8 pelo `TestClient` ou pelo navegador, não por curl.
 - O `uv init` copia o e-mail do git para `authors` no `pyproject.toml`: tirar (o pre-commit barra).
+- Funcionalidade nova não trata o modo manual: só chama `executar()` com `usar_cache=True`, de preferência a partir de um GET. O handler de `AguardandoResposta` leva ao pedido e volta para a mesma URL, onde a resposta sai do cache.
+- Nomes de modelo variam por provedor (no OpenRouter, `anthropic/claude-haiku-5.5`, com ponto). Confira na lista do provedor antes de pôr um padrão.

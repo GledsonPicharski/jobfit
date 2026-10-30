@@ -1,5 +1,6 @@
 import json
 from decimal import Decimal
+from urllib.parse import urlsplit
 
 import pytest
 from fastapi.testclient import TestClient
@@ -179,3 +180,163 @@ def test_config_json_legivel(cliente, tmp_path):
     cliente.post("/configurar-pasta", data={"pasta": str(pasta)})
     bruto = config.caminho_config().read_text(encoding="utf-8")
     assert json.loads(bruto)["pasta_dados"] == str(pasta)
+
+
+# --- modo manual --------------------------------------------------------------
+
+
+def _resposta_valida(pedido_id: str) -> str:
+    return (
+        "Aqui está:\n```json\n"
+        f'{{"pedido": "{pedido_id}", '
+        '"resposta": {"ok": true, "mensagem": "Funcionou pelo chat."}}'
+        "\n```"
+    )
+
+
+def _gerar_pedido_de_teste(cliente) -> str:
+    resposta = cliente.post("/p/ana-exemplo/ia/testar", follow_redirects=False)
+    assert resposta.status_code == 303
+    local = resposta.headers["location"]
+    assert local.startswith("/p/ana-exemplo/pedidos/P-")
+    return local.rsplit("/", 1)[1]
+
+
+def test_perfil_novo_no_modo_manual_nao_pede_chave(cliente, ana):
+    painel = cliente.get("/p/ana-exemplo").text
+    assert "Nenhuma chave" not in painel
+
+    tela_ia = cliente.get("/p/ana-exemplo/ia").text
+    assert "Testar ciclo" in tela_ia
+    assert 'name="chave"' not in tela_ia
+
+
+def test_ciclo_manual_completo(cliente, ana):
+    pedido_id = _gerar_pedido_de_teste(cliente)
+
+    tela = cliente.get(f"/p/ana-exemplo/pedidos/{pedido_id}").text
+    assert f"Pedido JobFit {pedido_id}" in tela
+    assert "dados_jobfit" in tela
+    assert "Copiar" in tela
+
+    resultado = cliente.post(
+        f"/p/ana-exemplo/pedidos/{pedido_id}/resposta",
+        data={"resposta": _resposta_valida(pedido_id)},
+    )
+    assert resultado.status_code == 200
+    assert "Conexão funcionando." in resultado.text
+    assert "Funcionou pelo chat." in resultado.text
+    assert "US$ 0,00" in resultado.text
+
+    painel = cliente.get("/p/ana-exemplo").text
+    assert "testar_conexao v1" in painel
+    assert "aguardando resposta" not in painel
+
+
+def test_testar_de_novo_reaproveita_o_pedido_pendente(cliente, ana):
+    assert _gerar_pedido_de_teste(cliente) == _gerar_pedido_de_teste(cliente)
+
+
+def test_resposta_invalida_mostra_erro_e_correcao(cliente, ana):
+    pedido_id = _gerar_pedido_de_teste(cliente)
+    resposta = cliente.post(
+        f"/p/ana-exemplo/pedidos/{pedido_id}/resposta",
+        data={"resposta": f'{{"pedido": "{pedido_id}", "resposta": {{"ok": true}}}}'},
+    )
+    assert resposta.status_code == 400
+    assert "não seguiu o formato" in resposta.text
+    assert "mensagem: campo obrigatório ausente" in resposta.text
+    assert 'id="correcao"' in resposta.text
+
+
+def test_baixar_pacote(cliente, ana):
+    pedido_id = _gerar_pedido_de_teste(cliente)
+    resposta = cliente.get(f"/p/ana-exemplo/pedidos/{pedido_id}/pacote.md")
+    assert resposta.headers["content-type"] == "text/markdown; charset=utf-8"
+    assert f'filename="jobfit-{pedido_id}.md"' in resposta.headers["content-disposition"]
+    assert "attachment" in resposta.headers["content-disposition"]
+    assert f"Pedido JobFit {pedido_id} — testar_conexao" in resposta.content.decode("utf-8")
+
+
+@pytest.mark.parametrize(
+    ("voltar", "redireciona"),
+    [
+        ("/p/ana-exemplo/ia", True),
+        ("//evil.com/p/ana-exemplo/", False),
+        ("https://evil.com/p/ana-exemplo/ia", False),
+        ("/p/outro/ia", False),
+        ("/p/ana-exemplo-falso/ia", False),
+        ("", False),
+    ],
+)
+def test_voltar_so_aceita_caminho_do_proprio_perfil(cliente, ana, voltar, redireciona):
+    pedido_id = _gerar_pedido_de_teste(cliente)
+    resposta = cliente.post(
+        f"/p/ana-exemplo/pedidos/{pedido_id}/resposta",
+        data={"resposta": _resposta_valida(pedido_id), "voltar": voltar},
+        follow_redirects=False,
+    )
+    if redireciona:
+        assert resposta.status_code == 303
+        assert resposta.headers["location"] == voltar
+    else:
+        assert resposta.status_code == 200
+        assert "Funcionou pelo chat." in resposta.text
+
+
+def test_painel_lista_pendentes_e_cancelar_tira_da_lista(cliente, ana):
+    pedido_id = _gerar_pedido_de_teste(cliente)
+    painel = cliente.get("/p/ana-exemplo").text
+    assert "1 pedido(s) aguardando resposta" in painel
+    assert f"/p/ana-exemplo/pedidos/{pedido_id}" in painel
+
+    cliente.post(f"/p/ana-exemplo/pedidos/{pedido_id}/cancelar")
+    assert "aguardando resposta" not in cliente.get("/p/ana-exemplo").text
+    assert "cancelado" in cliente.get(f"/p/ana-exemplo/pedidos/{pedido_id}").text
+
+
+def test_pedido_respondido_nao_aceita_outra_resposta(cliente, ana):
+    pedido_id = _gerar_pedido_de_teste(cliente)
+    url = f"/p/ana-exemplo/pedidos/{pedido_id}/resposta"
+    cliente.post(url, data={"resposta": _resposta_valida(pedido_id)})
+    resposta = cliente.post(url, data={"resposta": _resposta_valida(pedido_id)})
+    assert resposta.status_code == 400
+    assert "não está mais aguardando" in resposta.text
+
+
+def test_pedido_de_outro_perfil_da_404(cliente, ana, pasta_dados):
+    pedido_id = _gerar_pedido_de_teste(cliente)
+    criar_perfil(pasta_dados, "Camila")
+    assert cliente.get(f"/p/camila/pedidos/{pedido_id}").status_code == 404
+    assert cliente.get("/p/ana-exemplo/pedidos/P-NAOEXI").status_code == 404
+
+
+def test_handler_leva_qualquer_funcionalidade_ao_pedido(ana):
+    """Uma funcionalidade futura só chama executar(); o handler cuida do modo manual."""
+    from app.db import banco_do_perfil
+    from app.ia import executar
+    from app.ia.tarefas import TESTAR_CONEXAO
+
+    app = create_app()
+
+    @app.get("/p/{slug}/funcionalidade")
+    async def funcionalidade(slug: str):
+        saida = await executar(ana, TESTAR_CONEXAO, "algo", engine=banco_do_perfil(slug))
+        return {"mensagem": saida.mensagem}
+
+    cliente = TestClient(app, base_url=ORIGEM, headers={"Origin": ORIGEM})
+    resposta = cliente.get("/p/ana-exemplo/funcionalidade?x=1", follow_redirects=False)
+    assert resposta.status_code == 303
+    local = resposta.headers["location"]
+    assert local.startswith("/p/ana-exemplo/pedidos/P-")
+    assert local.endswith("?voltar=/p/ana-exemplo/funcionalidade%3Fx%3D1")
+
+    htmx = cliente.get("/p/ana-exemplo/funcionalidade", headers={"HX-Request": "true"})
+    assert htmx.headers["hx-redirect"].startswith("/p/ana-exemplo/pedidos/P-")
+
+    pedido_id = urlsplit(local).path.rsplit("/", 1)[1]
+    voltou = cliente.post(
+        f"/p/ana-exemplo/pedidos/{pedido_id}/resposta",
+        data={"resposta": _resposta_valida(pedido_id), "voltar": "/p/ana-exemplo/funcionalidade"},
+    )
+    assert voltou.json() == {"mensagem": "Funcionou pelo chat."}

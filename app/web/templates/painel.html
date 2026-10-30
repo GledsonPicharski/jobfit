@@ -3,10 +3,21 @@
 {% block conteudo %}
 <h1>{{ perfil.nome }}</h1>
 
-{% if not tem_chave %}
+{% if falta_chave %}
 <article class="aviso">
   Nenhuma chave de IA cadastrada para {{ PROVEDORES[perfil.ia.provedor] }}.
   <a href="/p/{{ perfil.slug }}/ia">Configurar IA</a>
+</article>
+{% endif %}
+
+{% if pendentes %}
+<article class="aviso">
+  <strong>{{ pendentes | length }} pedido(s) aguardando resposta</strong> do seu chat:
+  <ul>
+    {% for p in pendentes %}
+    <li><a href="/p/{{ perfil.slug }}/pedidos/{{ p.id }}">{{ p.id }}</a> · {{ p.tarefa }} · {{ p.criado_em | hora }}</li>
+    {% endfor %}
+  </ul>
 </article>
 {% endif %}
 
