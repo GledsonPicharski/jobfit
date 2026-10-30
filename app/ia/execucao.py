@@ -5,9 +5,7 @@ saída validada (uma nova tentativa se vier inválida) → registro de custo →
 Toda chamada que chega ao provedor é registrada em `chamadas_ia`, com sucesso ou erro.
 """
 
-import logging
 import time
-from dataclasses import dataclass
 
 from pydantic import BaseModel
 from pydantic_ai import Agent
@@ -32,20 +30,9 @@ from app.ia.erros import ErroIA
 from app.ia.modelos import ChamadaIA
 from app.ia.prompts import carregar_prompt
 from app.ia.provedores import montar_modelo
-from app.ia.tarefas import Tarefa
+from app.ia.registro import ResultadoIA, registrar
+from app.ia.tarefas import Tarefa, texto_da_entrada
 from app.perfis.modelos import Perfil
-
-log = logging.getLogger(__name__)
-
-
-@dataclass(frozen=True)
-class ResultadoIA[S: BaseModel]:
-    saida: S
-    chamada: ChamadaIA
-
-
-def _texto_entrada(entrada: str | BaseModel) -> str:
-    return entrada.model_dump_json(indent=2) if isinstance(entrada, BaseModel) else entrada
 
 
 def _status(erro: Exception) -> int | None:
@@ -109,24 +96,6 @@ def _resumo_erro(erro: Exception) -> str:
     return type(erro).__name__ + (f" (HTTP {status})" if status else "")
 
 
-def _registrar(engine: Engine, chamada: ChamadaIA) -> ChamadaIA:
-    with Session(engine, expire_on_commit=False) as sessao:
-        sessao.add(chamada)
-        sessao.commit()
-    log.info(
-        "ia tarefa=%s v%s modelo=%s:%s cache=%s sucesso=%s custo_micro_usd=%s ms=%s",
-        chamada.tarefa,
-        chamada.versao_prompt,
-        chamada.provedor,
-        chamada.modelo,
-        chamada.cache_hit,
-        chamada.sucesso,
-        chamada.custo_micro_usd,
-        chamada.duracao_ms,
-    )
-    return chamada
-
-
 async def executar_detalhado[S: BaseModel](
     perfil: Perfil,
     tarefa: Tarefa[S],
@@ -154,7 +123,7 @@ async def executar_detalhado[S: BaseModel](
         if guardado is not None:
             saida = tarefa.saida.model_validate_json(guardado.saida_json)
             return ResultadoIA(
-                saida, _registrar(engine, nova_chamada(custo_micro_usd=0, cache_hit=True))
+                saida, registrar(engine, nova_chamada(custo_micro_usd=0, cache_hit=True))
             )
 
     checar_teto(engine, perfil.ia.teto_diario_usd)
@@ -167,10 +136,10 @@ async def executar_detalhado[S: BaseModel](
 
     inicio = time.perf_counter()
     try:
-        resultado = await agente.run(_texto_entrada(entrada))
+        resultado = await agente.run(texto_da_entrada(entrada))
     except Exception as erro:
         duracao = int((time.perf_counter() - inicio) * 1000)
-        _registrar(engine, nova_chamada(sucesso=False, erro=_resumo_erro(erro), duracao_ms=duracao))
+        registrar(engine, nova_chamada(sucesso=False, erro=_resumo_erro(erro), duracao_ms=duracao))
         raise traduzir_erro(erro, modelo) from erro
     duracao = int((time.perf_counter() - inicio) * 1000)
 
@@ -192,7 +161,7 @@ async def executar_detalhado[S: BaseModel](
                 saida_json=resultado.output.model_dump_json(),
             )
             sessao.commit()
-    return ResultadoIA(resultado.output, _registrar(engine, chamada))
+    return ResultadoIA(resultado.output, registrar(engine, chamada))
 
 
 async def executar[S: BaseModel](

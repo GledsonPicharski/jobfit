@@ -35,6 +35,27 @@ class ChamadaIA(SQLModel, table=True):
     erro: str | None = None
 
 
+class PedidoIA(SQLModel, table=True):
+    """Pedido do modo manual: o pacote que a pessoa cola no chat dela.
+
+    O pacote tem os dados enviados à IA; fica só no banco local do perfil, nunca em log.
+    """
+
+    __tablename__ = "pedidos_ia"
+
+    id: str = Field(primary_key=True)  # "P-" + 6 caracteres
+    criado_em: datetime = Field(default_factory=agora_utc, index=True)
+    tarefa: str
+    versao_prompt: int
+    provedor: str
+    modelo: str
+    chave_cache: str = Field(index=True)
+    pacote: str
+    status: str = "pendente"  # pendente | respondido | cancelado
+    tentativas: int = 0
+    respondido_em: datetime | None = None
+
+
 class CacheIA(SQLModel, table=True):
     __tablename__ = "cache_ia"
 

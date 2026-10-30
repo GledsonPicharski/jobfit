@@ -5,12 +5,23 @@ import os
 # O Pydantic AI imprime um banner no terminal na primeira execução.
 os.environ.setdefault("PYDANTIC_AI_NO_BANNER", "1")
 
-from app.ia.erros import ChaveAusente, ErroIA, TetoAtingido
-from app.ia.execucao import ResultadoIA, executar, executar_detalhado
+from app.ia.erros import (
+    AguardandoResposta,
+    ChaveAusente,
+    ErroIA,
+    PedidoIndisponivel,
+    RespostaInvalida,
+    TetoAtingido,
+)
+from app.ia.execucao import executar, executar_detalhado
+from app.ia.registro import ResultadoIA
 
 __all__ = [
+    "AguardandoResposta",
     "ChaveAusente",
     "ErroIA",
+    "PedidoIndisponivel",
+    "RespostaInvalida",
     "ResultadoIA",
     "TetoAtingido",
     "executar",
