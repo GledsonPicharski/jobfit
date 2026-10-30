@@ -16,6 +16,10 @@ _SECOES: dict[str, str] = {
     "idiomas": "Idiomas",
     "certificacoes": "Certificações",
     "respostas": "Respostas de formulário",
+    "contato": "Contato",
+    "docencia": "Docência e mentoria",
+    "premios": "Prêmios e publicações",
+    "lacunas": "Lacunas conhecidas",
 }
 _SECAO_DO_TIPO: dict[TipoFato, str] = {
     "preferencia": "objetivo",
@@ -28,6 +32,12 @@ _SECAO_DO_TIPO: dict[TipoFato, str] = {
     "idioma": "idiomas",
     "certificacao": "certificacoes",
     "resposta_padrao": "respostas",
+    "contato": "contato",
+    "docencia": "docencia",
+    "mentoria": "docencia",
+    "premio": "premios",
+    "publicacao": "premios",
+    "lacuna": "lacunas",
 }
 # Palavras que identificam a seção no título, para aceitar títulos escritos à mão.
 _PALAVRAS: dict[str, tuple[str, ...]] = {
@@ -38,6 +48,11 @@ _PALAVRAS: dict[str, tuple[str, ...]] = {
     "idiomas": ("idioma",),
     "certificacoes": ("certifica",),
     "respostas": ("resposta",),
+    # Contato costuma ficar no topo, junto com as instruções para a IA.
+    "contato": ("contato", "como a ia"),
+    "docencia": ("docencia", "mentoria"),
+    "premios": ("premio", "publica"),
+    "lacunas": ("lacuna",),
 }
 _TITULO = re.compile(r"^(#{1,6})\s+(.*?)\s*#*\s*$")
 _CERCA = re.compile(r"^(`{3,}|~{3,})")

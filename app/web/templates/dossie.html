@@ -28,6 +28,18 @@
 </article>
 {% endif %}
 
+{% if propostos %}
+<article class="aviso">
+  <strong>{{ propostos | length }} fato(s) proposto(s) aguardando sua confirmação</strong>
+  <p><small>Fato proposto não vai para CV nem LinkedIn até ser confirmado.</small></p>
+  <ul>
+    {% for f in propostos %}
+    <li><a href="#{{ f.id }}">{{ f.id }}</a> · {{ f.texto | truncate(80) }}</li>
+    {% endfor %}
+  </ul>
+</article>
+{% endif %}
+
 <nav class="abas">
   <a href="/p/{{ perfil.slug }}/dossie" {% if visao != "cv" %}aria-current="page"{% endif %}>Tudo</a>
   <a href="/p/{{ perfil.slug }}/dossie?visao=cv" {% if visao == "cv" %}aria-current="page"{% endif %}>Visão de CV</a>
@@ -55,6 +67,18 @@
       </small>
       {% if visao != "cv" %}
       <span class="acoes">
+        {% if f.status != "confirmado" %}
+        <form method="post" action="/p/{{ perfil.slug }}/dossie/fatos/{{ f.id }}/status">
+          <input type="hidden" name="status" value="confirmado">
+          <button type="submit">Confirmar</button>
+        </form>
+        {% endif %}
+        {% if f.status == "proposto" %}
+        <form method="post" action="/p/{{ perfil.slug }}/dossie/fatos/{{ f.id }}/status">
+          <input type="hidden" name="status" value="rejeitado">
+          <button type="submit" class="outline secondary">Rejeitar</button>
+        </form>
+        {% endif %}
         <form method="post" action="/p/{{ perfil.slug }}/dossie/fatos/{{ f.id }}/alternar">
           <input type="hidden" name="campo" value="privado">
           <button type="submit" class="outline secondary">{% if f.privado %}Tirar 🔒{% else %}Marcar 🔒{% endif %}</button>

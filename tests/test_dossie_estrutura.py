@@ -107,6 +107,12 @@ def test_subtitulo_com_cargo_e_datas_ainda_casa_com_a_empresa():
         ("certificacao", "## 7. Certificações"),
         ("preferencia", "## 1. Objetivo e preferências"),
         ("restricao", "## 1. Objetivo e preferências"),
+        ("contato", "## 0. Como a IA deve usar este arquivo"),
+        ("docencia", "## Docência e mentoria"),
+        ("mentoria", "## Docência e mentoria"),
+        ("premio", "## Prêmios e publicações"),
+        ("publicacao", "## Prêmios e publicações"),
+        ("lacuna", "## Lacunas conhecidas"),
     ],
 )
 def test_fato_sem_empresa_vai_para_a_secao_do_tipo(tipo, secao):

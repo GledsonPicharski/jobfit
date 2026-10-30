@@ -1,6 +1,7 @@
 """Telas do dossiê: fatos por seção, 🔒 e "não enviar à IA", Visão de CV e histórico."""
 
 import json
+from collections.abc import Callable
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Form, HTTPException, Request
@@ -11,7 +12,7 @@ from app.db import banco_do_perfil
 from app.dossie.estrutura import secoes_para_tela
 from app.dossie.filtros import fatos_publicaveis
 from app.dossie.formato import Documento, ErroDossie
-from app.dossie.modelos import ROTULOS_TIPO
+from app.dossie.modelos import ROTULOS_TIPO, Fato
 from app.dossie.propostas import importacoes_em_revisao
 from app.dossie.versoes import (
     alterar_dossie,
@@ -69,8 +70,28 @@ def ver_dossie(request: Request, pasta: Pasta, perfil: PerfilAtual, visao: str =
             "visao": visao,
             "arquivo": caminho_dossie(pasta, perfil.slug),
             "importacoes": importacoes_em_revisao(engine),
+            "propostos": [f for f in doc.fatos if f.status == "proposto"],
         },
     )
+
+
+def _mudar_fato(
+    request: Request, pasta, perfil: Perfil, fato_id: str, mudanca: Callable[[Fato], dict]
+):
+    """Uma edição no app: muda um fato e grava uma versão nova."""
+
+    def trocar(doc: Documento) -> None:
+        try:
+            fato = doc.fato(fato_id)
+        except KeyError as erro:
+            raise HTTPException(404, "Fato não encontrado.") from erro
+        doc.substituir_fato(fato.model_copy(update=mudanca(fato)))
+
+    try:
+        alterar_dossie(pasta, banco_do_perfil(perfil.slug), perfil, "edicao_app", trocar)
+    except ErroDossie as erro:
+        return _tela_quebrada(request, pasta, perfil, erro, status=409)
+    return ir(f"/p/{perfil.slug}/dossie#{fato_id}")
 
 
 @router.post("/p/{slug}/dossie/fatos/{fato_id}/alternar", response_class=HTMLResponse)
@@ -81,18 +102,21 @@ def alternar(
     fato_id: str,
     campo: Annotated[Literal["privado", "nao_enviar_ia"], Form()],
 ):
-    def trocar(doc: Documento) -> None:
-        try:
-            fato = doc.fato(fato_id)
-        except KeyError as erro:
-            raise HTTPException(404, "Fato não encontrado.") from erro
-        doc.substituir_fato(fato.model_copy(update={campo: not getattr(fato, campo)}))
+    return _mudar_fato(
+        request, pasta, perfil, fato_id, lambda fato: {campo: not getattr(fato, campo)}
+    )
 
-    try:
-        alterar_dossie(pasta, banco_do_perfil(perfil.slug), perfil, "edicao_app", trocar)
-    except ErroDossie as erro:
-        return _tela_quebrada(request, pasta, perfil, erro, status=409)
-    return ir(f"/p/{perfil.slug}/dossie#{fato_id}")
+
+@router.post("/p/{slug}/dossie/fatos/{fato_id}/status", response_class=HTMLResponse)
+def decidir_status(
+    request: Request,
+    pasta: Pasta,
+    perfil: PerfilAtual,
+    fato_id: str,
+    status: Annotated[Literal["confirmado", "rejeitado"], Form()],
+):
+    """Confirma ou rejeita um fato `proposto` escrito à mão (regra 4)."""
+    return _mudar_fato(request, pasta, perfil, fato_id, lambda _: {"status": status})
 
 
 @router.get("/p/{slug}/dossie/historico", response_class=HTMLResponse)

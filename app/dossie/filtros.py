@@ -6,8 +6,8 @@ from app.dossie.modelos import Fato
 
 
 def fatos_para_ia(fatos: Iterable[Fato]) -> list[Fato]:
-    """O que pode ir ao provedor de IA (ou ao chat, no modo manual)."""
-    return [f for f in fatos if not f.nao_enviar_ia]
+    """O que pode ir ao provedor de IA (ou ao chat, no modo manual). Rejeitado não é fato."""
+    return [f for f in fatos if not f.nao_enviar_ia and f.status != "rejeitado"]
 
 
 def fatos_publicaveis(fatos: Iterable[Fato]) -> list[Fato]:

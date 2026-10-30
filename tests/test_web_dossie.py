@@ -4,7 +4,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.db import banco_do_perfil
-from app.dossie.formato import ler_dossie
+from app.dossie.formato import escrever_dossie, ler_dossie
 from app.dossie.versoes import caminho_dossie, versoes
 from app.main import create_app
 from app.perfis.servico import criar_perfil
@@ -127,3 +127,47 @@ def test_historico_e_diff_da_versao(cliente, ana_com_dossie):
 def test_versao_inexistente_da_404(cliente, ana_com_dossie):
     cliente.get("/p/ana/dossie")
     assert cliente.get("/p/ana/dossie/historico/99").status_code == 404
+
+
+def _com_proposto(pasta_dados) -> None:
+    caminho = caminho_dossie(pasta_dados, "ana")
+    doc = ler_dossie(caminho.read_text(encoding="utf-8"))
+    doc.substituir_fato(doc.fato("F-010").model_copy(update={"status": "proposto"}))
+    caminho.write_text(escrever_dossie(doc), encoding="utf-8")
+
+
+def test_fato_proposto_mostra_confirmar_e_rejeitar(cliente, ana_com_dossie, pasta_dados):
+    _com_proposto(pasta_dados)
+    tela = cliente.get("/p/ana/dossie").text
+    assert "1 fato(s) proposto(s) aguardando sua confirmação" in tela
+    assert 'href="#F-010"' in tela
+    assert tela.count('action="/p/ana/dossie/fatos/F-010/status"') == 2
+    assert 'action="/p/ana/dossie/fatos/F-001/status"' not in tela
+
+
+@pytest.mark.parametrize("status", ["confirmado", "rejeitado"])
+def test_decidir_fato_proposto_grava_versao(cliente, ana_com_dossie, pasta_dados, status):
+    _com_proposto(pasta_dados)
+    resposta = cliente.post(
+        "/p/ana/dossie/fatos/F-010/status", data={"status": status}, follow_redirects=False
+    )
+    assert resposta.status_code == 303
+    assert resposta.headers["location"] == "/p/ana/dossie#F-010"
+    assert ler_dossie(_arquivo(pasta_dados)).fato("F-010").status == status
+    assert versoes(banco_do_perfil("ana"))[0].motivo == "edicao_app"
+
+
+def test_fato_rejeitado_pode_ser_confirmado_depois(cliente, ana_com_dossie, pasta_dados):
+    cliente.post("/p/ana/dossie/fatos/F-010/status", data={"status": "rejeitado"})
+    tela = cliente.get("/p/ana/dossie").text
+    assert tela.count('action="/p/ana/dossie/fatos/F-010/status"') == 1
+    cliente.post("/p/ana/dossie/fatos/F-010/status", data={"status": "confirmado"})
+    assert ler_dossie(_arquivo(pasta_dados)).fato("F-010").status == "confirmado"
+
+
+def test_status_invalido_ou_fato_inexistente(cliente, ana_com_dossie, pasta_dados):
+    url = "/p/ana/dossie/fatos/F-010/status"
+    assert cliente.post(url, data={"status": "proposto"}).status_code == 422
+    resposta = cliente.post("/p/ana/dossie/fatos/F-999/status", data={"status": "confirmado"})
+    assert resposta.status_code == 404
+    assert _arquivo(pasta_dados) == EXEMPLO

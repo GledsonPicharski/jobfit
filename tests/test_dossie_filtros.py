@@ -31,7 +31,11 @@ def test_nao_enviar_ia_nunca_vai_para_a_ia():
     ids = [f.id for f in fatos_para_ia(FATOS)]
     assert "F-003" not in ids
     assert "F-004" not in ids
-    assert ids == ["F-001", "F-002", "F-005", "F-006"]
+    assert ids == ["F-001", "F-002", "F-005"]
+
+
+def test_rejeitado_nao_vai_para_a_ia():
+    assert "F-006" not in [f.id for f in fatos_para_ia(FATOS)]
 
 
 def test_filtros_aceitam_qualquer_iteravel():
