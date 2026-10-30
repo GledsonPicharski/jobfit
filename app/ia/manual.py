@@ -19,25 +19,12 @@ from app.ia.modelos import ChamadaIA, PedidoIA, agora_utc
 from app.ia.prompts import carregar_prompt
 from app.ia.registro import ResultadoIA, registrar
 from app.ia.tarefas import TAREFAS, Tarefa, texto_da_entrada
+from app.validacao import descrever_erro
 
 MARCA = "dados_jobfit"
 _ALFABETO = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"  # sem 0/O e 1/I, para ler e ditar
 _MARCA_NOS_DADOS = re.compile(MARCA, re.IGNORECASE)
 _BLOCO = re.compile(r"```[a-zA-Z]*\s*\n?(.*?)```", re.DOTALL)
-_ERROS_PYDANTIC = {
-    "missing": "campo obrigatório ausente",
-    "string_too_long": "texto longo demais",
-    "string_type": "deveria ser um texto",
-    "bool_parsing": "deveria ser true ou false",
-    "bool_type": "deveria ser true ou false",
-    "int_parsing": "deveria ser um número inteiro",
-    "int_type": "deveria ser um número inteiro",
-    "float_parsing": "deveria ser um número",
-    "list_type": "deveria ser uma lista",
-    "dict_type": "deveria ser um objeto",
-    "literal_error": "valor fora das opções permitidas",
-    "extra_forbidden": "campo não esperado",
-}
 
 
 def novo_id_pedido() -> str:
@@ -97,11 +84,6 @@ def _objetos_json(texto: str) -> Iterator[object]:
             yield objeto
 
 
-def _erro_pydantic(erro: dict) -> str:
-    campo = ".".join(str(parte) for parte in erro["loc"]) or "resposta"
-    return f"{campo}: {_ERROS_PYDANTIC.get(erro['type'], erro['msg'])}"
-
-
 def _correcao(pedido_id: str, erros: list[str]) -> str:
     lista = "\n".join(f"- {e}" for e in erros)
     return (
@@ -139,7 +121,7 @@ def ler_resposta[S: BaseModel](texto: str, tarefa: Tarefa[S], pedido_id: str) ->
     try:
         return tarefa.saida.model_validate(envelope["resposta"])
     except ValidationError as erro:
-        raise _invalida(pedido_id, *(_erro_pydantic(e) for e in erro.errors())) from erro
+        raise _invalida(pedido_id, *(descrever_erro(e) for e in erro.errors())) from erro
 
 
 # --- pedidos no banco ---------------------------------------------------------

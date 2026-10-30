@@ -157,10 +157,11 @@ Narrativa livre escrita pela pessoa.
 | `id` | F-001, F-002 ... | Referência estável; CVs e avaliações apontam para ele |
 | `tipo` | cargo, resultado, competência, ferramenta, formação, certificação, idioma, preferência, restrição, resposta_padrao | Filtros e seleção para CV |
 | `texto` | uma frase | O que pode ir para CV ou LinkedIn |
-| `periodo`, `empresa` | datas ISO, nome | Checagem de fatos |
+| `empresa`, `cargo` | nomes | Checagem de fatos |
+| `periodo` | `{inicio, fim}` em ISO parcial (`2023-03`); `fim` vazio = atual | Checagem de fatos |
 | `metricas` | chave: valor | Números que o CV pode citar |
 | `origem` | linkedin_pdf, cv, audio, resposta_lacuna, manual + data | Rastreabilidade |
-| `status` | confirmado, proposto, rejeitado | Só `confirmado` vai para CV |
+| `status` | confirmado, proposto, rejeitado | Só `confirmado` vai para CV; propostas pendentes e rejeitadas ficam no banco (decisão 0004) |
 | `privado` | true/false (🔒) | Nunca vai para CV, LinkedIn ou e-mail |
 | `nao_enviar_ia` | true/false | Nem é enviado ao provedor de IA |
 
