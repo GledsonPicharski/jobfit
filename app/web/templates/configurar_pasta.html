@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block titulo %}Pasta de dados · JobFit{% endblock %}
+{% block conteudo %}
+<h1>Pasta de dados</h1>
+<p>
+  É onde ficam o dossiê, as fontes e os CVs de cada perfil. Pode ficar dentro do
+  Google Drive para desktop (ex.: <code>G:\Meu Drive\JobFit</code>). O banco de dados
+  fica nesta máquina, fora dessa pasta.
+</p>
+<form method="post" action="/configurar-pasta">
+  <label>
+    Caminho completo da pasta
+    <input name="pasta" value="{{ valor }}" required
+           {% if erro %}aria-invalid="true" aria-describedby="erro-pasta"{% endif %}>
+    {% if erro %}<small id="erro-pasta">{{ erro }}</small>{% endif %}
+  </label>
+  <button type="submit">Usar esta pasta</button>
+</form>
+{% endblock %}

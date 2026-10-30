@@ -6,13 +6,21 @@ backups/
 historico/
 dossie.md
 contexto_pessoal.md
+# Código, testes e o perfil fictício usam esses mesmos nomes (app/perfis/, exemplos/.../dossie.md)
+!/app/**/
+!/tests/**/
+!/exemplos/**
 *.db
 *.db-journal
+*.db-wal
+*.db-shm
 *.sqlite
 *.sqlite3
 .env
 .env.*
 !.env.example
+# Termos reais (nomes, e-mails, valores) que o pre-commit procura; nunca versionar
+.dados-sensiveis.txt
 
 # --- Python ---
 __pycache__/

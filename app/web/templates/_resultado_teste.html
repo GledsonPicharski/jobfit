@@ -1,0 +1,14 @@
+{% if erro %}
+<article class="falha">
+  <strong>Não funcionou.</strong> {{ erro }}
+</article>
+{% else %}
+<article class="sucesso">
+  <strong>Conexão funcionando.</strong> {{ saida.mensagem }}
+  <footer>
+    <small>{{ chamada.provedor }} · {{ chamada.modelo }} ·
+      {{ chamada.tokens_entrada }} tokens de entrada, {{ chamada.tokens_saida }} de saída ·
+      {{ chamada.duracao_ms }} ms · custo: <strong>{{ chamada.custo_micro_usd | usd }}</strong></small>
+  </footer>
+</article>
+{% endif %}

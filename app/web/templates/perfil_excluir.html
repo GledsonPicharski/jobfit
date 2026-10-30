@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block titulo %}Excluir · {{ perfil.nome }} · JobFit{% endblock %}
+{% block conteudo %}
+<h1>Excluir o perfil {{ perfil.nome }}</h1>
+{% if erro %}<p class="falha">{{ erro }}</p>{% endif %}
+
+<article class="aviso">
+  <p>O perfil some da lista do JobFit. Nada é apagado de vez: a pasta do perfil e o banco
+    (pedidos, cache e gastos de IA) vão para a lixeira da pasta de dados:</p>
+  <p><code>{{ lixeira }}</code></p>
+  <p>Para recuperar, mova a pasta de volta para <code>perfis</code>. As chaves de API
+    deste perfil são apagadas do Gerenciador de Credenciais.</p>
+</article>
+
+<form method="post" action="/p/{{ perfil.slug }}/excluir">
+  <label>
+    Digite <strong>{{ perfil.slug }}</strong> para confirmar
+    <input name="confirmacao" autocomplete="off" required>
+  </label>
+  <div class="grid">
+    <a href="/" role="button" class="secondary">Cancelar</a>
+    <button type="submit" class="perigo">Excluir perfil</button>
+  </div>
+</form>
+{% endblock %}

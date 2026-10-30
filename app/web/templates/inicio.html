@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block conteudo %}
+<h1>Perfis</h1>
+{% if excluido %}
+<p class="sucesso">Perfil {{ excluido }} excluído. Os arquivos estão em
+  <code>{{ pasta / "lixeira" }}</code>.</p>
+{% endif %}
+{% if perfis %}
+<ul>
+  {% for p in perfis %}
+  <li><a href="/p/{{ p.slug }}">{{ p.nome }}</a>
+    · <small><a href="/p/{{ p.slug }}/excluir" class="texto-perigo">excluir</a></small></li>
+  {% endfor %}
+</ul>
+{% else %}
+<p>Nenhum perfil ainda. Crie o primeiro para começar.</p>
+{% endif %}
+<a href="/perfis/novo" role="button">Criar perfil</a>
+<p><small>Pasta de dados: <code>{{ pasta }}</code> · <a href="/configurar-pasta">trocar</a></small></p>
+{% endblock %}

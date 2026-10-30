@@ -1,0 +1,13 @@
+{
+  "slug": "ana-exemplo",
+  "nome": "Ana Exemplo (perfil fictício)",
+  "criado_em": "2026-10-29T09:00:00-03:00",
+  "ia": {
+    "provedor": "anthropic",
+    "modelos": {
+      "barato": "claude-haiku-5-5",
+      "forte": "claude-sonnet-5-5"
+    },
+    "teto_diario_usd": "2.00"
+  }
+}

@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block titulo %}IA · {{ perfil.nome }} · JobFit{% endblock %}
+{% block conteudo %}
+<h1>Configuração de IA</h1>
+{% if salvo %}<p class="sucesso">Configuração salva.</p>{% endif %}
+{% if erro %}<p class="falha">{{ erro }}</p>{% endif %}
+
+{% set manual = not perfil.ia.precisa_chave %}
+<form method="post" action="/p/{{ perfil.slug }}/ia">
+  <label>
+    Modo
+    <select name="provedor">
+      {% for id, nome in PROVEDORES.items() %}
+      <option value="{{ id }}" {% if id == perfil.ia.provedor %}selected{% endif %}>
+        {{ nome }}{% if chaves[id] %} (chave cadastrada){% endif %}
+      </option>
+      {% endfor %}
+    </select>
+    {% if manual %}
+    <small>
+      Sem chave e sem custo: o JobFit monta o pedido, você cola no chat que já usa
+      (Claude, ChatGPT ou Gemini, inclusive grátis) e cola a resposta de volta.
+      Troque para um modo API só se quiser automação; salve para ver os campos da chave.
+    </small>
+    {% else %}
+    <small>Ao trocar de provedor, os modelos que estavam no padrão passam ao padrão do novo.</small>
+    {% endif %}
+  </label>
+
+  {% if manual %}
+  <input type="hidden" name="teto" value="{{ perfil.ia.teto_diario_usd }}">
+  {% else %}
+  <label>
+    Chave de API
+    <input type="password" name="chave" autocomplete="off"
+           placeholder="{% if chaves[perfil.ia.provedor] %}chave cadastrada; deixe em branco para manter{% else %}cole a chave aqui{% endif %}">
+    <small>Guardada no Gerenciador de Credenciais do Windows, nunca em arquivo.</small>
+  </label>
+
+  <div class="grid">
+    <label>
+      Modelo barato
+      <input name="modelo_barato" value="{{ perfil.ia.modelos.barato }}" placeholder="{{ padroes.barato }}">
+    </label>
+    <label>
+      Modelo forte
+      <input name="modelo_forte" value="{{ perfil.ia.modelos.forte }}" placeholder="{{ padroes.forte }}">
+    </label>
+  </div>
+
+  <label>
+    Teto diário (US$)
+    <input name="teto" inputmode="decimal"
+           value="{{ '%.2f' | format(perfil.ia.teto_diario_usd) | replace('.', ',') }}">
+    <small>Ao atingir, as tarefas de IA deste perfil pausam até o dia seguinte.</small>
+  </label>
+  {% endif %}
+
+  <button type="submit">Salvar</button>
+</form>
+
+<hr>
+{% if manual %}
+<h2>Testar ciclo</h2>
+<p>Gera um pedido curto para você colar no seu chat e colar a resposta de volta.</p>
+<form method="post" action="/p/{{ perfil.slug }}/ia/testar">
+  <button type="submit" class="secondary">Testar ciclo</button>
+</form>
+{% else %}
+<h2>Testar conexão</h2>
+<p>Faz uma chamada curta ao modelo barato e mostra a resposta e o custo.</p>
+<button hx-post="/p/{{ perfil.slug }}/ia/testar" hx-target="#resultado-teste"
+        hx-indicator="#resultado-teste" class="secondary">Testar conexão</button>
+<div id="resultado-teste" aria-live="polite"></div>
+{% endif %}
+{% endblock %}

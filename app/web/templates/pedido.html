@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block titulo %}Pedido {{ pedido.id }} · JobFit{% endblock %}
+{% block conteudo %}
+<hgroup>
+  <h1>Pedido {{ pedido.id }}</h1>
+  <p>{{ pedido.tarefa }} v{{ pedido.versao_prompt }} · criado em {{ pedido.criado_em | hora }}</p>
+</hgroup>
+
+{% if saida is defined %}
+<article class="sucesso">
+  {% if pedido.tarefa == "testar_conexao" %}
+  <strong>Conexão funcionando.</strong> {{ saida.mensagem }}
+  {% else %}
+  <strong>Resposta registrada.</strong>
+  {% endif %}
+  <footer><small>modo manual · custo: <strong>{{ chamada.custo_micro_usd | usd }}</strong></small></footer>
+</article>
+<a href="/p/{{ perfil.slug }}" role="button" class="secondary">Voltar ao painel</a>
+
+{% elif pedido.status == "respondido" %}
+<p>Este pedido já foi respondido.{% if erro %} {{ erro }}{% endif %}</p>
+<a href="/p/{{ perfil.slug }}" role="button" class="secondary">Voltar ao painel</a>
+
+{% elif pedido.status == "cancelado" %}
+<p>Este pedido foi cancelado.</p>
+<a href="/p/{{ perfil.slug }}" role="button" class="secondary">Voltar ao painel</a>
+
+{% else %}
+<section>
+  <h2>1. Copie o pacote</h2>
+  <p>
+    <button type="button" data-copiar="pacote" data-rotulo="Copiar">Copiar</button>
+    <a href="/p/{{ perfil.slug }}/pedidos/{{ pedido.id }}/pacote.md" role="button" class="secondary">Baixar .md</a>
+  </p>
+  <textarea id="pacote" rows="10" readonly>{{ pedido.pacote }}</textarea>
+  <small>Pacote grande? Baixe o .md e anexe no chat em vez de colar.</small>
+</section>
+
+<section>
+  <h2>2. Cole no chat que você usa</h2>
+  <p>Claude, ChatGPT ou Gemini, inclusive nas versões grátis. Envie e espere a resposta.</p>
+</section>
+
+<section>
+  <h2>3. Cole aqui a resposta do chat</h2>
+  {% if erro %}
+  <article class="falha">
+    <strong>Não deu certo.</strong> {{ erro }}
+    {% if correcao %}
+    <p>Cole isto no chat para ele corrigir a resposta:</p>
+    <p><button type="button" class="secondary" data-copiar="correcao" data-rotulo="Copiar correção">Copiar correção</button></p>
+    <textarea id="correcao" rows="5" readonly>{{ correcao }}</textarea>
+    {% endif %}
+  </article>
+  {% endif %}
+  <form method="post" action="/p/{{ perfil.slug }}/pedidos/{{ pedido.id }}/resposta">
+    <input type="hidden" name="voltar" value="{{ voltar or '' }}">
+    <textarea name="resposta" rows="8" required placeholder="Cole aqui a resposta completa do chat">{{ resposta or '' }}</textarea>
+    <button type="submit">Enviar resposta</button>
+  </form>
+  <form method="post" action="/p/{{ perfil.slug }}/pedidos/{{ pedido.id }}/cancelar">
+    <button type="submit" class="secondary outline">Cancelar pedido</button>
+  </form>
+  {% if pedido.tentativas %}<small>Tentativas: {{ pedido.tentativas }}</small>{% endif %}
+</section>
+{% endif %}
+{% endblock %}

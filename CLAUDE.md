@@ -15,7 +15,7 @@ App local, aberto e gratuito de evolução de carreira. Mantém um dossiê vivo 
 - Python 3.12, gerenciado com `uv` (`uv add`, `uv run`). Nunca usar pip direto.
 - FastAPI + Jinja2 + HTMX + Pico.css. Sem Node, sem etapa de build no front.
 - SQLite com SQLModel; migrações com Alembic.
-- Camada de IA própria em `app/ia/` (Pydantic AI por baixo). Nenhum outro módulo chama provedor de IA diretamente.
+- Camada de IA própria em `app/ia/`, com modos (decisão 0003): manual/copiar e colar (padrão), API via Pydantic AI, MCP (Fase 4b) e Ollama (v1.1). Nenhum outro módulo chama provedor de IA diretamente nem sabe qual modo está ativo.
 - Transcrição: faster-whisper. PDF: template HTML + Playwright. Portais: httpx, feedparser, selectolax.
 - CLI com Typer: `jobfit`, `jobfit scan`, `jobfit eval`, `jobfit backup`.
 - Testes: pytest. Lint e formatação: ruff.
@@ -27,6 +27,7 @@ uv sync                 # instalar
 uv run jobfit             # subir o app
 uv run pytest           # testes
 uv run ruff check . && uv run ruff format .
+uv run pre-commit install # uma vez: ruff + checagem de dados pessoais por commit
 uv run jobfit eval        # evals de qualidade da IA
 ```
 
@@ -73,3 +74,15 @@ Os dois usuários usam Windows. Desenvolver e testar pensando nele:
 ## Aprendizados
 
 (Atualizar ao fim de cada fase com o que deu errado e como evitar.)
+
+**Fase 0**
+
+- Confira a API instalada antes de escrever contra uma biblioteca: o Pydantic AI 2.x já calcula `usage.cost`, e o SQLModel atual exige datas com fuso (`UTCDateTime`).
+- `app.ia.executar` é a função exportada, não o módulo. Monkeypatch de internals vai em `app.ia.execucao.*`.
+- O Pydantic AI imprime um banner no stdout; `app/ia/__init__.py` define `PYDANTIC_AI_NO_BANNER`.
+- SDKs de provedor demoram para importar no Windows. Importe-os dentro da função que os usa, nunca no topo de módulos carregados pelo app web.
+- Teste que precisa de CPF, e-mail real ou valor em R$ monta o dado em tempo de execução; escrito literal, o pre-commit barra o próprio teste.
+- No Git Bash, `curl` manda argumentos com acento em cp1252. Teste UTF-8 pelo `TestClient` ou pelo navegador, não por curl.
+- O `uv init` copia o e-mail do git para `authors` no `pyproject.toml`: tirar (o pre-commit barra).
+- Funcionalidade nova não trata o modo manual: só chama `executar()` com `usar_cache=True`, de preferência a partir de um GET. O handler de `AguardandoResposta` leva ao pedido e volta para a mesma URL, onde a resposta sai do cache.
+- Nomes de modelo variam por provedor (no OpenRouter, `anthropic/claude-haiku-5.5`, com ponto). Confira na lista do provedor antes de pôr um padrão.
