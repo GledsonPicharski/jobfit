@@ -109,7 +109,7 @@ class Documento:
 # --- leitura ------------------------------------------------------------------
 
 
-def _normalizar(texto: str) -> str:
+def normalizar(texto: str) -> str:
     # O Bloco de Notas grava BOM e CRLF; o dossiê é sempre UTF-8 com LF.
     return texto.removeprefix("﻿").replace("\r\n", "\n").replace("\r", "\n")
 
@@ -171,7 +171,7 @@ def _ler_fatos(conteudo: str, primeira_linha: int) -> list[tuple[Fato, int]]:
 
 
 def ler_dossie(texto: str) -> Documento:
-    linhas = _normalizar(texto).splitlines(keepends=True)
+    linhas = normalizar(texto).splitlines(keepends=True)
     cabecalho, metadados, i = _ler_cabecalho(linhas)
     doc = Documento(cabecalho, metadados)
     texto_atual: list[str] = []
@@ -230,6 +230,18 @@ class _Dumper(yaml.SafeDumper):
     pass
 
 
+class _NumaLinha(dict):
+    """`periodo` e `metricas` ficam numa linha só; o fato em si, em blocos."""
+
+
+_Dumper.add_representer(
+    _NumaLinha,
+    lambda dumper, dados: dumper.represent_mapping(
+        "tag:yaml.org,2002:map", dados.items(), flow_style=True
+    ),
+)
+
+
 def _escalar(valor: Any) -> str:
     texto = yaml.dump(
         valor, Dumper=_Dumper, allow_unicode=True, default_flow_style=True, width=10_000
@@ -244,7 +256,9 @@ def _para_yaml(fato: Fato) -> dict[str, Any]:
         valor = dados.pop(campo, None)
         if campo == "periodo" and fato.periodo is not None:
             valor = {"inicio": fato.periodo.inicio, "fim": fato.periodo.fim}
-        if valor is not None and valor != {}:
+        if isinstance(valor, dict):
+            valor = _NumaLinha(valor) if valor else None
+        if valor is not None:
             saida[campo] = valor
     if dados.pop("nao_enviar_ia", False):
         saida["nao_enviar_ia"] = True
@@ -260,7 +274,7 @@ def serializar_fatos(fatos: list[Fato]) -> str:
         Dumper=_Dumper,
         allow_unicode=True,
         sort_keys=False,
-        default_flow_style=None,  # periodo e metricas numa linha só, o resto em blocos
+        default_flow_style=False,
         width=10_000,
     )
 
