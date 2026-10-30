@@ -31,6 +31,8 @@ from app.dossie.versoes import carregar_dossie
 from app.ia import ErroIA, executar
 from app.ia.tarefas import EXTRAIR_FATOS, EntradaExtracao
 from app.ingestao.arquivos import LIMITE_TEXTO, ErroArquivo, ler_enviado, salvar_fonte
+from app.ingestao.cv import FONTE as FONTE_CV
+from app.ingestao.cv import ErroCV, texto_do_cv
 from app.ingestao.extracao import candidatos_da_ia, mascarar
 from app.ingestao.linkedin_pdf import FONTE as FONTE_LINKEDIN
 from app.ingestao.linkedin_pdf import ErroLeitura, ler_linkedin_pdf, texto_das_descricoes
@@ -49,9 +51,9 @@ _DECISOES = {
     "rejeitada": "Rejeitada",
 }
 FONTE_TEXTO = "texto"
-_FONTES = {FONTE_LINKEDIN: "PDF do LinkedIn", "cv": "CV", FONTE_TEXTO: "Texto"}
+_FONTES = {FONTE_LINKEDIN: "PDF do LinkedIn", FONTE_CV: "CV", FONTE_TEXTO: "Texto"}
 # Como a IA deve ler o texto de cada fonte (ver prompts/extrair_fatos).
-_FONTE_PARA_IA = {FONTE_TEXTO: "texto", "cv": "cv", FONTE_LINKEDIN: "descricoes_linkedin"}
+_FONTE_PARA_IA = {FONTE_TEXTO: "texto", FONTE_CV: "cv", FONTE_LINKEDIN: "descricoes_linkedin"}
 templates.env.globals.update(ACOES_PROPOSTA=_ACOES, DECISOES_PROPOSTA=_DECISOES)
 templates.env.globals["FONTES_IMPORTACAO"] = _FONTES
 
@@ -170,6 +172,37 @@ def importar_texto(
         return ir(_url(perfil, importacao.id, "/secoes"))
     importacao = criar_importacao(engine, FONTE_TEXTO, nome_tela, relativo)
     atualizar_importacao(engine, importacao.id, extraido=relativo, extracao="pendente")
+    return ir(_url(perfil, importacao.id, "/extrair"))
+
+
+@router.post("/p/{slug}/importar/cv", response_class=HTMLResponse)
+def importar_cv(
+    request: Request,
+    pasta: Pasta,
+    perfil: PerfilAtual,
+    arquivo: Annotated[UploadFile, File()],
+):
+    engine = banco_do_perfil(perfil.slug)
+    try:
+        conteudo = ler_enviado(arquivo.file)
+        texto = texto_do_cv(conteudo)
+        carregar_dossie(pasta, engine, perfil)
+    except ErroArquivo as erro:
+        return _tela_importar(request, perfil, str(erro), erro.status)
+    except ErroCV as erro:
+        return _tela_importar(request, perfil, str(erro), 400)
+    except ErroDossie as erro:
+        mensagem = f"O dossiê tem um erro; corrija antes de importar. {erro}"
+        return _tela_importar(request, perfil, mensagem, 409)
+    if len(texto) > LIMITE_CARACTERES:
+        return _tela_importar(request, perfil, _grande_demais(len(texto)), 413)
+
+    nome = arquivo.filename or "cv"
+    pasta_do_perfil = pasta_perfil(pasta, perfil.slug)
+    relativo = salvar_fonte(pasta_do_perfil, nome, conteudo)
+    extraido = salvar_fonte(pasta_do_perfil, f"{PurePath(nome).stem}.txt", texto.encode("utf-8"))
+    importacao = criar_importacao(engine, FONTE_CV, nome, relativo)
+    atualizar_importacao(engine, importacao.id, extraido=extraido, extracao="pendente")
     return ir(_url(perfil, importacao.id, "/extrair"))
 
 

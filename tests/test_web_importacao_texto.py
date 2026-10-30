@@ -15,6 +15,7 @@ from app.main import create_app
 from app.perfis.modelos import ConfigIA
 from app.perfis.servico import criar_perfil, pasta_perfil, salvar_perfil
 from app.web import rotas_importacao
+from tests.cv_ficticio import gerar_cv_docx, gerar_cv_pdf
 from tests.ia_falsa import Falso
 from tests.linkedin_pdf_ficticio import gerar_pdf
 
@@ -294,3 +295,68 @@ def test_linkedin_manda_as_descricoes_para_a_ia_sem_repetir_cargos(
     assert '"descricoes_linkedin"' in str(falso.ultimo_pedido)
     assert len(propostas_da_importacao(_engine(), 1)) == antes  # o cargo já estava proposto
     assert obter_importacao(_engine(), 1).extracao == "feita"
+
+
+# --- CV antigo ----------------------------------------------------------------
+
+CV = [
+    "Ana Exemplo - Cientista de Dados",
+    "Gerente de Dados e IA - Empresa Exemplo (nov/2022 - atual)",
+    "Reduziu o custo da plataforma em 30%.",
+]
+CARGO_DO_CV = {
+    "tipo": "cargo",
+    "texto": "Gerente de Dados e IA — Empresa Exemplo",
+    "empresa": "Empresa Exemplo",
+    "cargo": "Gerente de Dados e IA",
+    "periodo": {"inicio": "2022-11", "fim": None},
+    "trecho": "Gerente de Dados e IA - Empresa Exemplo (nov/2022 - atual)",
+}
+RESULTADO_DO_CV = {
+    "tipo": "resultado",
+    "texto": "Reduziu o custo da plataforma em 30%",
+    "empresa": "Empresa Exemplo",
+    "trecho": "Reduziu o custo da plataforma em 30%.",
+}
+
+
+@pytest.mark.parametrize("formato", ["docx", "pdf"])
+def test_cv_vira_texto_e_conflito_sugere_o_linkedin(
+    cliente, ana_api, usar_modelo, pasta_dados, formato
+):
+    falso = usar_modelo(Falso({"fatos": [CARGO_DO_CV, RESULTADO_DO_CV]}))
+    conteudo = gerar_cv_docx(CV) if formato == "docx" else gerar_cv_pdf(CV)
+    resposta = cliente.post(
+        "/p/ana/importar/cv",
+        files={"arquivo": (f"CV antigo.{formato}", conteudo, "application/octet-stream")},
+        follow_redirects=False,
+    )
+    assert resposta.headers["location"] == "/p/ana/importacoes/1/extrair"
+    importacao = obter_importacao(_engine(), 1)
+    assert importacao.fonte == "cv"
+    assert importacao.extraido.endswith("_CV_antigo.txt")
+
+    cliente.get("/p/ana/importacoes/1/extrair")
+    assert '"cv"' in str(falso.ultimo_pedido)
+    conflito, novo = propostas_da_importacao(_engine(), 1)
+    assert (conflito.acao, conflito.fato_alvo, conflito.sugestao) == (
+        "conflito",
+        "F-010",
+        "manter_atual",
+    )
+    assert "LinkedIn, que prevalece sobre o CV antigo" in conflito.motivo
+    assert novo.acao == "novo" and json.loads(novo.alertas) == []
+
+    tela = cliente.get("/p/ana/importacoes/1").text
+    assert "No dossiê (F-010)" in tela
+    assert "Manter o do dossiê" in tela
+    assert _dossie(pasta_dados) == EXEMPLO
+
+
+def test_cv_que_nao_e_pdf_nem_docx(cliente, ana, pasta_dados):
+    resposta = cliente.post(
+        "/p/ana/importar/cv", files={"arquivo": ("cv.doc", b"\xd0\xcf\x11\xe0" + b"0" * 50)}
+    )
+    assert resposta.status_code == 400
+    assert ".docx ou PDF" in resposta.text
+    assert not list((pasta_perfil(pasta_dados, "ana") / "fontes").iterdir())

@@ -34,7 +34,18 @@
   </form>
 </article>
 
-<p><small>CV antigo (PDF ou DOCX) chega na próxima etapa desta fase.</small></p>
+<article>
+  <h2>CV antigo</h2>
+  <p>PDF ou DOCX. O app tira o texto e a IA extrai os fatos, como no texto colado.
+    Se o CV discordar do dossiê ou do LinkedIn numa data, o conflito aparece lado a lado,
+    e a sugestão é ficar com o dossiê ou com o LinkedIn.</p>
+  <form method="post" action="/p/{{ perfil.slug }}/importar/cv" enctype="multipart/form-data">
+    <input type="file" name="arquivo" required
+      accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
+    <small>Até {{ limite }}. E-mail, telefone e CPF saem do texto antes de ir para a IA.</small>
+    <button type="submit">Ler o CV</button>
+  </form>
+</article>
 
 {% if importacoes %}
 <h2>Importações</h2>
