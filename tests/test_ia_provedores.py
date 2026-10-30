@@ -25,7 +25,7 @@ def test_sem_chave_da_erro_claro():
     ("provedor", "classe", "nome"),
     [
         ("anthropic", AnthropicModel, "claude-haiku-5-5"),
-        ("openrouter", OpenRouterModel, "anthropic/claude-haiku-5-5"),
+        ("openrouter", OpenRouterModel, "anthropic/claude-haiku-5.5"),
     ],
 )
 def test_monta_modelo_do_provedor(provedor, classe, nome):
