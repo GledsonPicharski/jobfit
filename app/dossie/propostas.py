@@ -227,10 +227,26 @@ def _comparar(fatos: list[Fato], cand: Candidato) -> PropostaNova | None:
     return PropostaNova("novo", cand, sugestao)
 
 
+def _como_fato(cand: Candidato, n: int) -> Fato:
+    """Um candidato já proposto, como fato provisório, só para comparar."""
+    return Fato.model_validate({**cand.model_dump(include=set(CAMPOS_DO_FATO)), "id": f"F-{n:03d}"})
+
+
+def _ja_proposto(propostos: list[Fato], cand: Candidato) -> bool:
+    """Já proposto, mesmo com outro período: o que o código leu da fonte prevalece."""
+    repetido = _comparar(propostos, cand)
+    return repetido is None or repetido.acao != "novo"
+
+
 def montar_propostas(
-    fatos: list[Fato], candidatos: list[Candidato], rejeitados: set[str] | None = None
+    fatos: list[Fato],
+    candidatos: list[Candidato],
+    rejeitados: set[str] | None = None,
+    ja_propostos: list[Candidato] | None = None,
 ) -> Montagem:
+    """`ja_propostos`: o que esta importação já propôs (ex.: cargos lidos do PDF antes da IA)."""
     rejeitados = rejeitados or set()
+    propostos = [_como_fato(c, n) for n, c in enumerate(ja_propostos or [], start=1)]
     montagem = Montagem()
     vistos: list[Candidato] = []
     for cand in candidatos:
@@ -238,6 +254,9 @@ def montar_propostas(
             montagem.ja_rejeitados += 1
             continue
         if any(v.tipo == cand.tipo and _parecidos(v.texto, cand.texto) for v in vistos):
+            montagem.duplicados += 1
+            continue
+        if propostos and _ja_proposto(propostos, cand):
             montagem.duplicados += 1
             continue
         vistos.append(cand)
@@ -280,12 +299,16 @@ def importacoes_em_revisao(engine: Engine) -> list[Importacao]:
         return list(sessao.exec(consulta.order_by(Importacao.criado_em.desc())))
 
 
-def registrar_propostas(engine: Engine, importacao_id: int, montagem: Montagem) -> None:
+def registrar_propostas(
+    engine: Engine, importacao_id: int, montagem: Montagem, *, extracao_feita: bool = False
+) -> None:
+    """Acrescenta as propostas à importação (a IA pode vir depois do que o código leu)."""
     with Session(engine) as sessao:
         importacao = sessao.get(Importacao, importacao_id)
         if importacao is None:
             raise ErroProposta("Importação não encontrada.")
-        for ordem, nova in enumerate(montagem.propostas):
+        ja_existentes = len(propostas_da_importacao(engine, importacao_id))
+        for ordem, nova in enumerate(montagem.propostas, start=ja_existentes):
             cand = nova.candidato
             sessao.add(
                 Proposta(
@@ -302,11 +325,40 @@ def registrar_propostas(engine: Engine, importacao_id: int, montagem: Montagem) 
                     decisao="rejeitada" if nova.sugestao == "rejeitar" else "pendente",
                 )
             )
-        importacao.duplicados = montagem.duplicados
-        importacao.ja_rejeitados = montagem.ja_rejeitados
+        importacao.duplicados += montagem.duplicados
+        importacao.ja_rejeitados += montagem.ja_rejeitados
         importacao.status = "revisao"
+        if extracao_feita:
+            importacao.extracao = "feita"
         sessao.add(importacao)
         sessao.commit()
+
+
+def atualizar_importacao(engine: Engine, importacao_id: int, **campos: Any) -> Importacao:
+    with Session(engine, expire_on_commit=False) as sessao:
+        importacao = sessao.get(Importacao, importacao_id)
+        if importacao is None:
+            raise ErroProposta("Importação não encontrada.")
+        for campo, valor in campos.items():
+            setattr(importacao, campo, valor)
+        sessao.add(importacao)
+        sessao.commit()
+        return importacao
+
+
+def descartar_importacao(engine: Engine, importacao_id: int) -> None:
+    """Fecha sem gravar nada; as propostas ficam no banco, mas não contam como rejeitadas."""
+    importacao = obter_importacao(engine, importacao_id)
+    if importacao is None or importacao.status == "aplicada":
+        raise ErroProposta("Esta importação já foi gravada no dossiê.")
+    atualizar_importacao(engine, importacao_id, status="descartada")
+
+
+def candidatos_propostos(engine: Engine, importacao: Importacao) -> list[Candidato]:
+    return [
+        Candidato.model_validate({**json.loads(p.dados), "fonte": importacao.fonte})
+        for p in propostas_da_importacao(engine, importacao.id)
+    ]
 
 
 def propostas_da_importacao(engine: Engine, importacao_id: int) -> list[Proposta]:
@@ -317,8 +369,14 @@ def propostas_da_importacao(engine: Engine, importacao_id: int) -> list[Proposta
 
 def rejeitados_anteriores(engine: Engine) -> set[str]:
     with Session(engine) as sessao:
-        consulta = select(Proposta.chave).where(
-            Proposta.decisao == "rejeitada", Proposta.acao == "novo"
+        consulta = (
+            select(Proposta.chave)
+            .join(Importacao)
+            .where(
+                Proposta.decisao == "rejeitada",
+                Proposta.acao == "novo",
+                Importacao.status == "aplicada",  # descartar não é rejeitar
+            )
         )
         return set(sessao.exec(consulta))
 

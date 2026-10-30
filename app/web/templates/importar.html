@@ -19,7 +19,22 @@
   </form>
 </article>
 
-<p><small>CV antigo (PDF ou DOCX) e texto colado chegam nas próximas etapas desta fase.</small></p>
+<article>
+  <h2>Texto ou arquivo .md</h2>
+  <p>Cole um texto sobre a sua carreira ou envie um <code>.md</code> ou <code>.txt</code>.
+    A IA tira fatos dele, cada um com o trecho de origem; o app confere o trecho e os números.
+    Se o arquivo tiver títulos (<code>#</code>), você escolhe antes as seções que vão.</p>
+  <form method="post" action="/p/{{ perfil.slug }}/importar/texto" enctype="multipart/form-data">
+    <label>Texto <textarea name="texto" rows="6" placeholder="Ex.: o que você fez no último emprego"></textarea></label>
+    <label>Nome <input name="nome" placeholder="Texto colado"></label>
+    <label>ou arquivo <input type="file" name="arquivo" accept=".md,.txt,text/markdown,text/plain"></label>
+    <small>E-mail, telefone e CPF saem do texto antes de ir para a IA (no modo manual, para o
+      chat que você usar). E-mail e telefone viram propostas de contato fora da IA.</small>
+    <button type="submit">Continuar</button>
+  </form>
+</article>
+
+<p><small>CV antigo (PDF ou DOCX) chega na próxima etapa desta fase.</small></p>
 
 {% if importacoes %}
 <h2>Importações</h2>
@@ -33,7 +48,10 @@
       <td>{{ FONTES_IMPORTACAO.get(imp.fonte, imp.fonte) }}</td>
       <td><a href="/p/{{ perfil.slug }}/importacoes/{{ imp.id }}">{{ imp.nome }}</a></td>
       <td>
-        {% if imp.status == "revisao" %}aguardando revisão
+        {% if imp.status == "secoes" %}escolher as seções
+        {% elif imp.status == "descartada" %}descartada
+        {% elif imp.status == "revisao" and imp.extracao == "pendente" %}aguardando a IA
+        {% elif imp.status == "revisao" %}aguardando revisão
         {% elif imp.versao_aplicada %}gravada na versão {{ imp.versao_aplicada }}
         {% else %}concluída sem mudanças{% endif %}
       </td>

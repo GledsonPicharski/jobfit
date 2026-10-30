@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block titulo %}Seções · {{ perfil.nome }} · JobFit{% endblock %}
+{% block conteudo %}
+<h1>Quais seções vão para a IA?</h1>
+<p><small>{{ importacao.nome }} · guardado em <code>{{ importacao.arquivo }}</code>
+  · <a href="/p/{{ perfil.slug }}/importar">voltar</a></small></p>
+
+{% if erro %}
+<article class="aviso falha"><p>{{ erro }}</p></article>
+{% endif %}
+
+<p>Cada seção vai só com o próprio texto, até o título seguinte. Marcar ou desmarcar um
+  título faz o mesmo com as subseções dele. O limite numa importação é de
+  {{ "{:,}".format(limite).replace(",", ".") }} caracteres.</p>
+
+<form method="post" action="/p/{{ perfil.slug }}/importacoes/{{ importacao.id }}/secoes" class="secoes">
+  {% for s in secoes %}
+  <label style="margin-left: {{ [s.nivel - 1, 0] | max * 1.5 }}rem">
+    <input type="checkbox" name="secao" value="{{ s.indice }}" data-nivel="{{ s.nivel }}" checked>
+    {% if s.nivel %}{{ s.titulo }}{% else %}<em>{{ s.titulo }}</em>{% endif %}
+    <small>· {{ s.caracteres }} caracteres</small>
+  </label>
+  {% endfor %}
+  <button type="submit">Mandar as marcadas para a IA</button>
+</form>
+<form method="post" action="/p/{{ perfil.slug }}/importacoes/{{ importacao.id }}/descartar">
+  <button type="submit" class="outline secondary">Descartar esta importação</button>
+</form>
+
+<script>
+  // Um título leva junto as subseções (as caixas seguintes de nível maior).
+  const caixas = [...document.querySelectorAll("form.secoes input[data-nivel]")];
+  caixas.forEach((caixa, i) => caixa.addEventListener("change", () => {
+    const nivel = Number(caixa.dataset.nivel);
+    if (nivel === 0) return;
+    for (let j = i + 1; j < caixas.length && Number(caixas[j].dataset.nivel) > nivel; j++) {
+      caixas[j].checked = caixa.checked;
+    }
+  }));
+</script>
+{% endblock %}

@@ -9,9 +9,12 @@ from app.dossie.propostas import (
     Candidato,
     ErroProposta,
     aplicar_importacao,
+    candidatos_propostos,
     criar_importacao,
     decidir,
+    descartar_importacao,
     montar_propostas,
+    obter_importacao,
     propostas_da_importacao,
     registrar_propostas,
     rejeitados_anteriores,
@@ -346,10 +349,52 @@ def test_rejeitar_conflito_mantem_o_fato_atual(pasta_dados, ana, engine):
     assert doc.fato("F-010").periodo == Periodo(inicio="2023-03", fim=None)
 
 
-def test_rejeitados_entram_na_lista_para_nao_voltar(engine):
-    _, props = _importar(engine, [_cand()])
+def test_rejeitados_entram_na_lista_para_nao_voltar(pasta_dados, ana, engine):
+    imp, props = _importar(engine, [_cand()])
     decidir(engine, props[0].id, "rejeitada")
+    assert rejeitados_anteriores(engine) == set()  # ainda em revisão
+    aplicar_importacao(pasta_dados, engine, ana, imp)
     assert _cand().chave in rejeitados_anteriores(engine)
+
+
+def test_descartar_nao_conta_como_rejeitar(engine):
+    imp, props = _importar(engine, [_cand()])
+    decidir(engine, props[0].id, "rejeitada")
+    descartar_importacao(engine, imp)
+    assert obter_importacao(engine, imp).status == "descartada"
+    assert rejeitados_anteriores(engine) == set()
+
+
+def test_descartar_importacao_gravada_e_recusado(pasta_dados, ana, engine):
+    imp, props = _importar(engine, [_cand()])
+    decidir(engine, props[0].id, "aprovada")
+    aplicar_importacao(pasta_dados, engine, ana, imp)
+    with pytest.raises(ErroProposta, match="já foi gravada"):
+        descartar_importacao(engine, imp)
+
+
+def test_segunda_rodada_acrescenta_sem_repetir_o_ja_proposto(engine):
+    """A IA lê as descrições depois que o código leu os cargos do PDF."""
+    cargo = _cargo("linkedin_pdf", "2018-01", "2023-02", empresa="Outra Empresa")
+    imp, primeiras = _importar(engine, [cargo], fonte="linkedin_pdf")
+    importacao = obter_importacao(engine, imp)
+    ja = candidatos_propostos(engine, importacao)
+    assert [c.texto for c in ja] == [cargo.texto]
+
+    da_ia = [
+        _cargo("linkedin_pdf", "2018", "2023", empresa="Outra Empresa"),  # mesmo cargo
+        _cand(texto="Reduziu o custo em 30%.", fonte="linkedin_pdf"),
+    ]
+    montagem = montar_propostas(FATOS, da_ia, ja_propostos=ja)
+    assert [p.candidato.texto for p in montagem.propostas] == ["Reduziu o custo em 30%."]
+    registrar_propostas(engine, imp, montagem, extracao_feita=True)
+
+    todas = propostas_da_importacao(engine, imp)
+    assert [p.ordem for p in todas] == [0, 1]
+    assert todas[0].id == primeiras[0].id
+    importacao = obter_importacao(engine, imp)
+    assert importacao.extracao == "feita"
+    assert importacao.duplicados == 1
 
 
 def test_edicao_invalida_e_recusada(engine):

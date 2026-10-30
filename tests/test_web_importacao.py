@@ -63,10 +63,12 @@ def test_enviar_pdf_cria_importacao_sem_tocar_no_dossie(cliente, ana, pasta_dado
     assert resposta.headers["location"] == "/p/ana/importacoes/1"
     assert _dossie(pasta_dados) == EXEMPLO  # regra 4: nada antes da aprovação
 
-    salvos = list((pasta_perfil(pasta_dados, "ana") / "fontes").iterdir())
-    assert len(salvos) == 1
-    assert salvos[0].name.endswith("_Perfil_da_Ana.pdf")
-    assert salvos[0].read_bytes() == PDF
+    salvos = sorted((pasta_perfil(pasta_dados, "ana") / "fontes").iterdir())
+    assert len(salvos) == 2  # o PDF e as descrições que a IA pode ler depois
+    pdf = next(s for s in salvos if s.suffix == ".pdf")
+    assert pdf.name.endswith("_Perfil_da_Ana.pdf")
+    assert pdf.read_bytes() == PDF
+    assert any(s.name.endswith("_descricoes.md") for s in salvos)
 
     tela = cliente.get("/p/ana/importacoes/1").text
     assert "Perfil da Ana.pdf" in tela
@@ -202,7 +204,7 @@ def test_importar_de_novo_nao_repete_o_rejeitado(cliente, ana):
     cliente.post("/p/ana/importacoes/1/gravar")
     _enviar(cliente)
     assert propostas_da_importacao(banco_do_perfil("ana"), 2) == []
-    assert "Nada novo" in cliente.get("/p/ana/importacoes/2").text
+    assert "Extrair fatos com a IA" in cliente.get("/p/ana/importacoes/2").text
 
 
 def test_arquivo_grande_demais_e_recusado(cliente, ana, pasta_dados, monkeypatch):

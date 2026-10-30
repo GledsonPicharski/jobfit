@@ -11,6 +11,8 @@
   {% if importacao.versao_aplicada %}
   <p>Gravada na versão {{ importacao.versao_aplicada }} do dossiê.
     <a href="/p/{{ perfil.slug }}/dossie/historico/{{ importacao.versao_aplicada }}">Ver o que mudou</a></p>
+  {% elif importacao.status == "descartada" %}
+  <p>Descartada: nada foi gravado, e o que estava aqui pode ser proposto de novo.</p>
   {% else %}
   <p>Concluída sem mudanças no dossiê.</p>
   {% endif %}
@@ -21,9 +23,22 @@
 <article class="aviso falha"><p>{{ erro }}</p></article>
 {% endif %}
 
+{% if extracao_pendente %}
+<article class="aviso">
+  {% if importacao.fonte == "linkedin_pdf" %}
+  <p>O resumo e as descrições dos cargos ainda não foram lidos. A IA pode tirar deles
+    resultados, competências e ferramentas, cada um com o trecho de origem.</p>
+  {% else %}
+  <p>A IA ainda não leu o texto.</p>
+  {% endif %}
+  <p><a href="/p/{{ perfil.slug }}/importacoes/{{ importacao.id }}/extrair" role="button">Extrair fatos com a IA</a>
+    <small>· texto enviado: <code>{{ importacao.extraido }}</code></small></p>
+</article>
+{% endif %}
+
 {% with oob = False %}{% include "_resumo_importacao.html" %}{% endwith %}
 
-{% if not cartoes %}
+{% if not cartoes and not extracao_pendente %}
 <p><strong>Nada novo:</strong> tudo o que veio desta fonte já está no dossiê ou foi rejeitado antes.</p>
 {% endif %}
 
@@ -38,8 +53,13 @@
     <button type="submit" class="secondary">Aprovar todas as pendentes</button>
   </form>
   {% endif %}
+  {% if cartoes or not extracao_pendente %}
   <form method="post" action="/p/{{ perfil.slug }}/importacoes/{{ importacao.id }}/gravar">
     <button type="submit">{% if cartoes %}Gravar no dossiê{% else %}Concluir{% endif %}</button>
+  </form>
+  {% endif %}
+  <form method="post" action="/p/{{ perfil.slug }}/importacoes/{{ importacao.id }}/descartar">
+    <button type="submit" class="outline secondary">Descartar</button>
   </form>
 </div>
 <p><small>Gravar cria uma versão nova do dossiê com o que você aprovou ou editou.

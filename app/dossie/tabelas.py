@@ -29,7 +29,9 @@ class Importacao(SQLModel, table=True):
     fonte: str  # linkedin_pdf | cv | texto
     nome: str  # nome do arquivo ou descrição curta, para a tela
     arquivo: str | None = None  # caminho relativo à pasta do perfil (em fontes/)
-    status: str = "revisao"  # extraindo | revisao | aplicada | descartada
+    extraido: str | None = None  # texto que vai para a IA, também em fontes/
+    extracao: str | None = None  # None (sem IA) | pendente | feita
+    status: str = "revisao"  # secoes | revisao | aplicada | descartada
     versao_aplicada: int | None = None
     duplicados: int = 0
     ja_rejeitados: int = 0

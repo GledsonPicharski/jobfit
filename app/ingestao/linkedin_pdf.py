@@ -443,3 +443,17 @@ def interpretar(linhas: list[Linha]) -> PerfilLinkedin:
 
 def ler_linkedin_pdf(arquivo: bytes | Path) -> PerfilLinkedin:
     return interpretar(linhas_do_pdf(arquivo))
+
+
+def texto_das_descricoes(perfil: PerfilLinkedin) -> str:
+    """Resumo e descrições dos cargos num texto só, com o cargo no título, para a IA."""
+    partes = []
+    for d in perfil.descricoes:
+        if d.cargo is None:
+            titulo = "Resumo"
+        else:
+            titulo = " — ".join(x for x in (d.cargo, d.empresa) if x)
+            if d.periodo:
+                titulo += f" ({d.periodo.inicio or '?'} – {d.periodo.fim or 'atual'})"
+        partes.append(f"## {titulo}\n\n{d.texto.strip()}")
+    return "\n\n".join(partes)
