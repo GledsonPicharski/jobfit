@@ -346,7 +346,8 @@ def test_handler_leva_qualquer_funcionalidade_ao_pedido(ana):
 
 
 def test_tela_de_excluir_pede_confirmacao(cliente, ana):
-    assert 'href="/p/ana-exemplo/excluir"' in cliente.get("/p/ana-exemplo/ia").text
+    assert 'href="/p/ana-exemplo/excluir"' in cliente.get("/").text
+    assert 'href="/p/ana-exemplo/excluir"' not in cliente.get("/p/ana-exemplo/ia").text
     tela = cliente.get("/p/ana-exemplo/excluir")
     assert tela.status_code == 200
     assert "lixeira" in tela.text

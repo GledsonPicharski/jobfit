@@ -8,7 +8,8 @@
 {% if perfis %}
 <ul>
   {% for p in perfis %}
-  <li><a href="/p/{{ p.slug }}">{{ p.nome }}</a></li>
+  <li><a href="/p/{{ p.slug }}">{{ p.nome }}</a>
+    · <small><a href="/p/{{ p.slug }}/excluir" class="texto-perigo">excluir</a></small></li>
   {% endfor %}
 </ul>
 {% else %}

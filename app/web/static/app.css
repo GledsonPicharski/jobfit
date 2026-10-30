@@ -5,4 +5,4 @@
 p.sucesso, p.falha { padding-left: 0.75rem; }
 #resultado-teste.htmx-request::after { content: "Testando…"; display: block; margin-top: 1rem; }
 .perigo { --pico-background-color: var(--pico-del-color); --pico-border-color: var(--pico-del-color); }
-.outline.perigo { --pico-background-color: transparent; --pico-color: var(--pico-del-color); }
+.texto-perigo { color: var(--pico-del-color); }
