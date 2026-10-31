@@ -4,6 +4,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from app.vagas.metadados import Modalidade, Senioridade
+
 Provedor = Literal["manual", "anthropic", "openrouter"]
 Nivel = Literal["barato", "forte"]
 
@@ -46,8 +48,25 @@ class ConfigIA(BaseModel):
         return self.provedor in PROVEDORES_COM_CHAVE
 
 
+class Criterios(BaseModel):
+    """Filtros duros de vaga, aplicados em código antes de qualquer IA (decisão 0006).
+
+    Lista vazia quer dizer "qualquer um". O salário mínimo é privado: nunca vai para a IA.
+    """
+
+    modalidades: list[Modalidade] = Field(
+        default_factory=lambda: ["remoto", "hibrido", "presencial"]
+    )
+    cidades: list[str] = Field(default_factory=list)  # para híbrido e presencial
+    senioridades: list[Senioridade] = Field(default_factory=list)
+    salario_minimo: Decimal | None = Field(default=None, ge=0)  # R$ por mês
+    empresas_evitar: list[str] = Field(default_factory=list)
+    palavras_evitar: list[str] = Field(default_factory=list)
+
+
 class Perfil(BaseModel):
     slug: str
     nome: str
     criado_em: datetime
     ia: ConfigIA = Field(default_factory=ConfigIA)
+    criterios: Criterios = Field(default_factory=Criterios)
