@@ -101,6 +101,7 @@ def salvar_criterios(
 
 def _tela_vagas(request: Request, perfil: Perfil, erro: str = "", entrada: str = "", status=200):
     engine = banco_do_perfil(perfil.slug)
+    concordancia = servico.concordancia(engine)
     return templates.TemplateResponse(
         request,
         "vagas.html",
@@ -108,6 +109,8 @@ def _tela_vagas(request: Request, perfil: Perfil, erro: str = "", entrada: str =
             "perfil": perfil,
             "vagas": servico.listar_vagas(engine),
             "lacunas": servico.lacunas_recorrentes(engine),
+            "concordancia": concordancia,
+            "acertos": sum(app == sua for _, app, sua in concordancia),
             "erro": erro,
             "entrada": entrada,
         },
@@ -286,3 +289,15 @@ def desfazer(request: Request, pasta: Pasta, perfil: PerfilAtual, vaga_id: int, 
         vaga = _vaga(perfil, vaga_id)
         return _tela_vaga(request, pasta, perfil, vaga, f"O dossiê tem um erro. {erro}", 409)
     return _ir_requisito(perfil, vaga_id, posicao)
+
+
+@router.post("/p/{slug}/vagas/{vaga_id}/faixa")
+def marcar_faixa(
+    perfil: PerfilAtual,
+    vaga_id: int,
+    faixa: Annotated[Literal["A", "B", "C", "D", ""], Form()] = "",
+):
+    """A faixa que a pessoa daria: mede a concordância com o app (critério de pronto)."""
+    _vaga(perfil, vaga_id)
+    servico.atualizar_vaga(banco_do_perfil(perfil.slug), vaga_id, faixa_esperada=faixa or None)
+    return ir(f"/p/{perfil.slug}/vagas/{vaga_id}")

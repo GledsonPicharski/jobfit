@@ -126,6 +126,18 @@
 {% endif %}
 {% endif %}
 
+{% if avaliacao and avaliacao.faixa %}
+<form method="post" action="/p/{{ perfil.slug }}/vagas/{{ vaga.id }}/faixa" class="faixa-esperada">
+  <small>Qual faixa você daria a esta vaga?</small>
+  {% for f in ("A", "B", "C", "D") %}
+  <button type="submit" name="faixa" value="{{ f }}" class="pequeno {% if vaga.faixa_esperada != f %}outline{% endif %}">{{ f }}</button>
+  {% endfor %}
+  {% if vaga.faixa_esperada %}
+  <small>{% if vaga.faixa_esperada == avaliacao.faixa %}bate com o JobFit{% else %}o JobFit deu {{ avaliacao.faixa }}{% endif %}</small>
+  {% endif %}
+</form>
+{% endif %}
+
 <div class="acoes-importacao">
   {% for estado, rotulo in ESTADOS_VAGA.items() if estado != vaga.estado %}
   <form method="post" action="/p/{{ perfil.slug }}/vagas/{{ vaga.id }}/estado">

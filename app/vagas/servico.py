@@ -17,9 +17,9 @@ from app.dossie.filtros import fatos_para_ia
 from app.dossie.formato import Documento
 from app.dossie.modelos import Fato
 from app.dossie.versoes import alterar_dossie
-from app.ia import executar_detalhado
+from app.ia import ResultadoIA, executar_detalhado
 from app.ia.modelos import ChamadaIA
-from app.ia.tarefas import AVALIAR_VAGA, EntradaAvaliacao, FatoParaAvaliar
+from app.ia.tarefas import AVALIAR_VAGA, AvaliacaoVaga, EntradaAvaliacao, FatoParaAvaliar
 from app.perfis.modelos import Perfil
 from app.textos import palavras
 from app.vagas.avaliacao import conferir, requisitos_efetivos
@@ -148,6 +148,25 @@ def _versao(doc: Documento) -> int | None:
     return versao if isinstance(versao, int) else None
 
 
+async def julgar(
+    perfil: Perfil, engine: Engine, texto_vaga: str, fatos: list[Fato], *, usar_cache=True
+) -> tuple[ResultadoIA[AvaliacaoVaga], list[dict], list[str]]:
+    """A IA julga os requisitos e o código confere (o mesmo caminho do app e dos evals)."""
+    enviados = fatos_para_avaliar(fatos)
+    entrada = EntradaAvaliacao(vaga=texto_vaga, fatos=enviados)
+    resultado = await executar_detalhado(
+        perfil, AVALIAR_VAGA, entrada, engine=engine, usar_cache=usar_cache
+    )
+    requisitos, alertas = conferir(resultado.saida, texto_vaga, {f.id for f in enviados})
+    return resultado, requisitos, alertas
+
+
+def nota_dos_requisitos(requisitos: list[dict]):
+    efetivos_ = requisitos_efetivos(requisitos, [])
+    itens = [Item(peso=r["peso"], decisao=r["decisao"], aplica=r["aplica"]) for r in efetivos_]
+    return calcular_nota(itens, carregar_config())
+
+
 async def avaliar(
     perfil: Perfil, engine: Engine, vaga: Vaga, doc: Documento, *, forcar: bool = False
 ) -> Avaliacao:
@@ -169,10 +188,7 @@ async def avaliar(
         bloqueada=barrar,
     )
     if not barrar:
-        fatos = fatos_para_avaliar(doc.fatos)
-        entrada = EntradaAvaliacao(vaga=vaga.texto, fatos=fatos)
-        resultado = await executar_detalhado(perfil, AVALIAR_VAGA, entrada, engine=engine)
-        requisitos, alertas = conferir(resultado.saida, vaga.texto, {f.id for f in fatos})
+        resultado, requisitos, alertas = await julgar(perfil, engine, vaga.texto, doc.fatos)
         avaliacao.requisitos = json.dumps(requisitos, ensure_ascii=False)
         avaliacao.alertas = json.dumps(alertas, ensure_ascii=False)
         avaliacao.chamada_id = resultado.chamada.id
@@ -383,3 +399,15 @@ def lacunas_recorrentes(engine: Engine) -> list[tuple[str, list[Vaga]]]:
         grupos.setdefault(palavras(texto), (texto, {}))[1][vaga.id] = vaga
     ordenados = sorted(grupos.values(), key=lambda g: (-len(g[1]), g[0]))
     return [(texto, list(vagas.values())) for texto, vagas in ordenados]
+
+
+# --- concordância (decisão 0006) -------------------------------------------------
+
+
+def concordancia(engine: Engine) -> list[tuple[Vaga, str, str]]:
+    """(vaga, faixa do app, faixa da pessoa) das vagas em que a pessoa marcou a faixa."""
+    pares = []
+    for vaga, avaliacao in listar_vagas(engine):
+        if vaga.faixa_esperada and avaliacao and avaliacao.faixa:
+            pares.append((vaga, avaliacao.faixa, vaga.faixa_esperada))
+    return pares

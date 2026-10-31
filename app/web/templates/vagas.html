@@ -40,6 +40,14 @@
 <p>Nenhuma vaga ainda. Cole o link ou o texto de uma vaga acima.</p>
 {% endif %}
 
+{% if concordancia %}
+<h2>Concordância</h2>
+<p>Nas vagas em que você marcou a faixa, a do JobFit bate em <strong>{{ acertos }} de {{ concordancia | length }}</strong>
+  ({{ (100 * acertos / concordancia | length) | round | int }}%).
+  <small>A meta da fase: 80% em 20 vagas. Onde não bate:
+  {% for vaga, app, sua in concordancia if app != sua %}<a href="/p/{{ perfil.slug }}/vagas/{{ vaga.id }}">{{ vaga.titulo or "vaga" }}</a> (você {{ sua }}, JobFit {{ app }}){% if not loop.last %}, {% endif %}{% else %}nenhuma.{% endfor %}</small></p>
+{% endif %}
+
 {% if lacunas %}
 <h2>Lacunas recorrentes</h2>
 <p><small>O que você disse que não tem, nas vagas avaliadas: o que mais aparece é o que mais vale estudar.</small></p>

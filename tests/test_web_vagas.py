@@ -283,3 +283,23 @@ def test_vaga_sem_avaliacao_nao_aceita_feedback(cliente, ana):
     _colar(cliente)
     resposta = cliente.post("/p/ana/vagas/1/requisitos/0/ajuste", data={"acao": "nao_tenho"})
     assert resposta.status_code == 404
+
+
+def test_faixa_esperada_e_concordancia(cliente, ana_api, usar_modelo):
+    _avaliada(cliente, usar_modelo)
+    assert "Qual faixa você daria" in cliente.get("/p/ana/vagas/1").text
+    assert "Concordância" not in cliente.get("/p/ana/vagas").text
+
+    cliente.post("/p/ana/vagas/1/faixa", data={"faixa": "B"})
+    assert "bate com o JobFit" in cliente.get("/p/ana/vagas/1").text
+    lista = cliente.get("/p/ana/vagas").text
+    assert "<strong>1 de 1</strong>" in lista and "(100%)" in lista
+
+    cliente.post("/p/ana/vagas/1/faixa", data={"faixa": "D"})
+    assert "o JobFit deu B" in cliente.get("/p/ana/vagas/1").text
+    lista = cliente.get("/p/ana/vagas").text
+    assert "<strong>0 de 1</strong>" in lista and "(você D, JobFit B)" in lista
+
+    cliente.post("/p/ana/vagas/1/faixa", data={"faixa": ""})
+    assert "Concordância" not in cliente.get("/p/ana/vagas").text
+    assert cliente.post("/p/ana/vagas/1/faixa", data={"faixa": "E"}).status_code == 422
