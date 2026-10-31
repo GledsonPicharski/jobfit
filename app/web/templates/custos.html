@@ -1,25 +1,9 @@
 {% extends "base.html" %}
-{% block titulo %}{{ perfil.nome }} · JobFit{% endblock %}
+{% block titulo %}Custos e chamadas · {{ perfil.nome }} · JobFit{% endblock %}
 {% block conteudo %}
-<h1>{{ perfil.nome }}</h1>
-
-{% if falta_chave %}
-<article class="aviso">
-  Nenhuma chave de IA cadastrada para {{ PROVEDORES[perfil.ia.provedor] }}.
-  <a href="/p/{{ perfil.slug }}/ia">Configurar IA</a>
-</article>
-{% endif %}
-
-{% if pendentes %}
-<article class="aviso">
-  <strong>{{ pendentes | length }} pedido(s) aguardando resposta</strong> do seu chat:
-  <ul>
-    {% for p in pendentes %}
-    <li><a href="/p/{{ perfil.slug }}/pedidos/{{ p.id }}">{{ p.id }}</a> · {{ p.tarefa }} · {{ p.criado_em | hora }}</li>
-    {% endfor %}
-  </ul>
-</article>
-{% endif %}
+<h1>Custos e chamadas</h1>
+<p><small>O que a IA custou e as últimas chamadas. No modo manual, o custo é zero: quem responde é o seu chat.
+  · <a href="/p/{{ perfil.slug }}/ia">Configurar IA</a></small></p>
 
 <section class="grid">
   <article>

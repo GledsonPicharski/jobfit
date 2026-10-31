@@ -62,6 +62,17 @@ class BlocoFatos:
     antes: str = ""  # comentários antes do primeiro fato
     trechos: list[Trecho] = field(default_factory=list)
 
+    def passar_comentarios(self, fato_id: str) -> None:
+        """O que vinha depois de um fato removido (comentários, o fim do bloco) não se perde."""
+        for i, trecho in enumerate(self.trechos):
+            if trecho.fato.id == fato_id:
+                if i > 0:
+                    self.trechos[i - 1].depois += trecho.depois
+                elif len(self.trechos) > 1:
+                    self.antes += trecho.depois
+                del self.trechos[i]
+                return
+
     def conteudo(self) -> str:
         if not self.alterado:
             return self.bruto
@@ -116,6 +127,15 @@ class Documento:
                     bloco.alterado = True
                     return
         raise KeyError(fato.id)
+
+    def remover_fato(self, fato_id: str) -> Fato:
+        for bloco in self.blocos:
+            for i, atual in enumerate(bloco.fatos):
+                if atual.id == fato_id:
+                    bloco.alterado = True
+                    bloco.passar_comentarios(fato_id)
+                    return bloco.fatos.pop(i)
+        raise KeyError(fato_id)
 
     def definir_metadado(self, chave: str, valor: Any) -> None:
         """Troca só a linha da chave no frontmatter; o resto fica como a pessoa escreveu."""

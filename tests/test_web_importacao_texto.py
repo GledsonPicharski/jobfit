@@ -81,7 +81,7 @@ def _colar(cliente, texto=TEXTO, **campos):
 
 def _enviar_md(cliente, conteudo: bytes, nome="dossie v2.md"):
     return cliente.post(
-        "/p/ana/importar/texto",
+        "/p/ana/importar/arquivo",
         files={"arquivo": (nome, conteudo, "text/markdown")},
         follow_redirects=False,
     )
@@ -155,8 +155,12 @@ def test_gravar_o_que_veio_da_ia(cliente, ana_api, usar_modelo, pasta_dados):
     usar_modelo(Falso(SAIDA))
     _colar(cliente, nome="Notas do último emprego")
     cliente.get("/p/ana/importacoes/1/extrair")
-    cliente.post("/p/ana/importacoes/1/aprovar-pendentes")
-    resposta = cliente.post("/p/ana/importacoes/1/gravar", follow_redirects=False)
+    marcadas = [
+        str(p.id) for p in propostas_da_importacao(_engine(), 1) if p.decisao != "rejeitada"
+    ]
+    resposta = cliente.post(
+        "/p/ana/importacoes/1/aplicar", data={"aceitas": marcadas}, follow_redirects=False
+    )
     assert resposta.status_code == 303
 
     doc = ler_dossie(_dossie(pasta_dados))
@@ -240,7 +244,7 @@ def test_arquivo_do_bloco_de_notas_antigo(cliente, ana, pasta_dados):
 def test_texto_vazio_e_grande_demais(cliente, ana, monkeypatch):
     resposta = _colar(cliente, texto="  \r\n ")
     assert resposta.status_code == 400
-    assert "Cole um texto" in resposta.text
+    assert "Cole um texto antes de continuar." in resposta.text
 
     monkeypatch.setattr(rotas_importacao, "LIMITE_CARACTERES", 20)
     resposta = _colar(cliente)
@@ -277,7 +281,7 @@ def test_linkedin_manda_as_descricoes_para_a_ia_sem_repetir_cargos(
     }
     falso = usar_modelo(Falso({"fatos": [cargo_repetido]}))
     cliente.post(
-        "/p/ana/importar/linkedin",
+        "/p/ana/importar/arquivo",
         files={"arquivo": ("Perfil.pdf", gerar_pdf("pt"), "application/pdf")},
     )
     importacao = obter_importacao(_engine(), 1)
@@ -288,7 +292,7 @@ def test_linkedin_manda_as_descricoes_para_a_ia_sem_repetir_cargos(
     assert descricoes.startswith("## ")
     tela = cliente.get("/p/ana/importacoes/1").text
     assert "descrições dos cargos ainda não foram lidos" in tela
-    assert "Gravar no dossiê" in tela  # dá para gravar sem a IA
+    assert "Aplicar ao dossiê" in tela  # dá para aplicar sem a IA
 
     antes = len(propostas_da_importacao(_engine(), 1))
     cliente.get("/p/ana/importacoes/1/extrair")
@@ -327,7 +331,7 @@ def test_cv_vira_texto_e_conflito_sugere_o_linkedin(
     falso = usar_modelo(Falso({"fatos": [CARGO_DO_CV, RESULTADO_DO_CV]}))
     conteudo = gerar_cv_docx(CV) if formato == "docx" else gerar_cv_pdf(CV)
     resposta = cliente.post(
-        "/p/ana/importar/cv",
+        "/p/ana/importar/arquivo",
         files={"arquivo": (f"CV antigo.{formato}", conteudo, "application/octet-stream")},
         follow_redirects=False,
     )
@@ -348,32 +352,15 @@ def test_cv_vira_texto_e_conflito_sugere_o_linkedin(
     assert novo.acao == "novo" and json.loads(novo.alertas) == []
 
     tela = cliente.get("/p/ana/importacoes/1").text
-    assert "No dossiê (F-010)" in tela
-    assert "Manter o do dossiê" in tela
+    assert "Diferente do dossiê" in tela
+    assert 'value="dossie" checked' in tela  # a sugestão vem marcada
     assert _dossie(pasta_dados) == EXEMPLO
 
 
 def test_cv_que_nao_e_pdf_nem_docx(cliente, ana, pasta_dados):
     resposta = cliente.post(
-        "/p/ana/importar/cv", files={"arquivo": ("cv.doc", b"\xd0\xcf\x11\xe0" + b"0" * 50)}
+        "/p/ana/importar/arquivo", files={"arquivo": ("cv.doc", b"\xd0\xcf\x11\xe0" + b"0" * 50)}
     )
     assert resposta.status_code == 400
     assert ".docx ou PDF" in resposta.text
     assert not list((pasta_perfil(pasta_dados, "ana") / "fontes").iterdir())
-
-
-def test_formulario_do_navegador_manda_o_campo_de_arquivo_vazio(cliente, ana):
-    resposta = cliente.post(
-        "/p/ana/importar/texto",
-        data={"texto": TEXTO, "nome": ""},
-        files={"arquivo": ("", b"", "application/octet-stream")},
-        follow_redirects=False,
-    )
-    assert resposta.headers["location"] == "/p/ana/importacoes/1/extrair"
-    assert obter_importacao(_engine(), 1).nome == "Texto colado"
-
-
-def test_pdf_no_campo_de_texto_e_recusado(cliente, ana):
-    resposta = _enviar_md(cliente, gerar_cv_pdf(), nome="cv.md")
-    assert resposta.status_code == 400
-    assert "não é texto" in resposta.text

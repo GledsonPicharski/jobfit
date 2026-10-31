@@ -13,7 +13,7 @@ class VersaoDossie(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     versao: int = Field(index=True, unique=True)
     criado_em: datetime = Field(default_factory=agora_utc)
-    motivo: str  # criacao | edicao_manual | edicao_app | importacao
+    motivo: str  # criacao | edicao_manual | edicao_app | importacao | adocao | restauracao
     importacao_id: int | None = None
     resumo: str = "{}"  # JSON: IDs adicionados, alterados e removidos
     sha256: str

@@ -36,7 +36,7 @@ uv run jobfit eval        # evals de qualidade da IA
 1. **Código antes de token.** Se dá para fazer de forma determinística (filtrar, deduplicar, calcular nota, checar fatos, ler portal), é código. IA só para entender texto e redigir.
 2. **Toda chamada de IA passa por `app/ia/executar()`**, com modelo Pydantic de saída, prompt versionado em `prompts/`, cache e registro de custo.
 3. **Nunca inventar fatos.** Todo texto gerado (CV, LinkedIn) carrega os IDs dos fatos do dossiê que o sustentam. A checagem em código bloqueia números, datas, empresas e cargos sem fato de origem.
-4. **Nada é gravado no dossiê sem aprovação.** Entradas viram propostas; a pessoa aprova, edita ou rejeita.
+4. **Nada é gravado no dossiê em silêncio.** O que vem de fonte ou da IA vira uma lista que a pessoa confere e aplica de uma vez (o desmarcado não volta); o que a própria pessoa afirma entra direto, com desfazer (decisão 0005).
 5. **Fatos `privado: true` nunca vão para CV, LinkedIn ou e-mail. Fatos `nao_enviar_ia: true` nunca vão para o provedor de IA.** Filtrar em código, com teste.
 6. **O app nunca envia candidatura, e-mail ou mensagem.**
 7. **Sem raspagem do LinkedIn.** Vagas de lá entram por link ou texto colado (e alertas de e-mail na v1.1).

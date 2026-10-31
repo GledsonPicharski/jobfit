@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block titulo %}{{ perfil.nome }} · JobFit{% endblock %}
+{% block conteudo %}
+<h1>{{ perfil.nome }}</h1>
+
+{% if falta_chave %}
+<article class="aviso">
+  Nenhuma chave de IA cadastrada para {{ PROVEDORES[perfil.ia.provedor] }}.
+  <a href="/p/{{ perfil.slug }}/ia">Configurar IA</a>
+</article>
+{% endif %}
+
+{% if pendentes %}
+<article class="aviso">
+  <strong>{{ pendentes | length }} pedido(s) aguardando resposta</strong> do seu chat:
+  <ul>
+    {% for p in pendentes %}
+    <li><a href="/p/{{ perfil.slug }}/pedidos/{{ p.id }}">{{ p.id }}</a> · {{ p.tarefa }} · {{ p.criado_em | hora }}</li>
+    {% endfor %}
+  </ul>
+</article>
+{% endif %}
+
+<article>
+  <header><strong>Dossiê</strong></header>
+  {% if erro_dossie %}
+  <p class="falha">O dossiê tem um erro, e o JobFit não grava nada nele até ser corrigido.</p>
+  <a href="/p/{{ perfil.slug }}/dossie" role="button">Ver o erro</a>
+  {% elif not doc.fatos %}
+  <p>Seu dossiê ainda está vazio. Ele é a base de tudo: avaliação de vagas, CV e LinkedIn.
+    Dá para começar pelo PDF do LinkedIn, por um dossiê ou CV que você já tem, ou preenchendo à mão.</p>
+  <a href="/p/{{ perfil.slug }}/dossie" role="button">Montar meu dossiê</a>
+  {% else %}
+  <p>{{ doc.fatos | length }} fato(s) · versão {{ doc.metadados.get("versao", "?") }}</p>
+  {% if importacoes %}
+  <p>Mudanças aguardando você:
+    {% for imp in importacoes %}<a href="/p/{{ perfil.slug }}/importacoes/{{ imp.id }}">{{ imp.nome }}</a>{% if not loop.last %}, {% endif %}{% endfor %}</p>
+  {% endif %}
+  {% if propostos %}
+  <p>{{ propostos | length }} fato(s) para confirmar no dossiê.</p>
+  {% endif %}
+  <a href="/p/{{ perfil.slug }}/dossie" role="button" class="secondary">Abrir o dossiê</a>
+  {% endif %}
+</article>
+
+<article>
+  <header><strong>Vagas</strong></header>
+  <p><small>Avaliar vagas contra o seu dossiê chega na próxima fase. O que você responder
+    nas avaliações ("eu tenho isso", "isso está errado") vai alimentar o dossiê.</small></p>
+</article>
+{% endblock %}

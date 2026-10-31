@@ -269,3 +269,23 @@ def test_frontmatter_sem_fechar():
     with pytest.raises(ErroDossie) as erro:
         ler_dossie("---\nversao: 1\n# Dossiê\n")
     assert erro.value.linha == 1
+
+
+def test_remover_fato_mantem_os_vizinhos_como_estavam():
+    doc = ler_dossie(BLOCO_A_MAO)
+    removido = doc.remover_fato("F-002")
+    assert removido.texto == "SQL"
+    texto = escrever_dossie(doc)
+    assert '  texto: "Python"   # aspas de quem escreveu' in texto
+    assert "# Conferir com o RH:\n- id: F-003\n  tipo: ferramenta\n  texto: 'Spark'" in texto
+    assert "SQL" not in texto
+    assert [f.id for f in ler_dossie(texto).fatos] == ["F-001", "F-003"]
+
+
+def test_remover_todos_os_fatos_do_bloco_e_reler():
+    doc = ler_dossie(BLOCO_A_MAO)
+    for fato_id in ("F-001", "F-002", "F-003"):
+        doc.remover_fato(fato_id)
+    assert ler_dossie(escrever_dossie(doc)).fatos == []
+    with pytest.raises(KeyError):
+        doc.remover_fato("F-001")

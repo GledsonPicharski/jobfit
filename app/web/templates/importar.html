@@ -1,54 +1,39 @@
 {% extends "base.html" %}
-{% block titulo %}Importar · {{ perfil.nome }} · JobFit{% endblock %}
+{% block titulo %}Atualizar dossiê · {{ perfil.nome }} · JobFit{% endblock %}
 {% block conteudo %}
-<h1>Importar para o dossiê</h1>
-<p>O que você importar vira <strong>propostas</strong>. Nada entra no dossiê antes de você aprovar.</p>
+<h1>Atualizar dossiê</h1>
+<p>Envie algo novo: o JobFit compara com o dossiê e mostra só o que muda. Você confere a lista
+  e aplica de uma vez. · <a href="/p/{{ perfil.slug }}/dossie">voltar ao dossiê</a></p>
 
 {% if erro %}
 <article class="aviso falha"><p>{{ erro }}</p></article>
 {% endif %}
 
-<article>
-  <h2>PDF do LinkedIn</h2>
-  <p>No LinkedIn, abra o seu perfil e use <strong>Recursos → Salvar como PDF</strong>.
-    Cargos, empresas, datas, formação, idiomas e certificações são lidos sem IA.</p>
-  <form method="post" action="/p/{{ perfil.slug }}/importar/linkedin" enctype="multipart/form-data">
-    <input type="file" name="arquivo" accept=".pdf,application/pdf" required>
-    <small>Até {{ limite }}. O arquivo fica guardado na pasta <code>fontes</code> do perfil.</small>
-    <button type="submit">Ler o PDF</button>
-  </form>
-</article>
-
-<article>
-  <h2>Texto ou arquivo .md</h2>
-  <p>Cole um texto sobre a sua carreira ou envie um <code>.md</code> ou <code>.txt</code>.
-    A IA tira fatos dele, cada um com o trecho de origem; o app confere o trecho e os números.
-    Se o arquivo tiver títulos (<code>#</code>), você escolhe antes as seções que vão.</p>
-  <form method="post" action="/p/{{ perfil.slug }}/importar/texto" enctype="multipart/form-data">
-    <label>Texto <textarea name="texto" rows="6" placeholder="Ex.: o que você fez no último emprego"></textarea></label>
-    <label>Nome <input name="nome" placeholder="Texto colado"></label>
-    <label>ou arquivo <input type="file" name="arquivo" accept=".md,.txt,text/markdown,text/plain"></label>
-    <small>E-mail, telefone e CPF saem do texto antes de ir para a IA (no modo manual, para o
-      chat que você usar). E-mail e telefone viram propostas de contato fora da IA.</small>
-    <button type="submit">Continuar</button>
-  </form>
-</article>
-
-<article>
-  <h2>CV antigo</h2>
-  <p>PDF ou DOCX. O app tira o texto e a IA extrai os fatos, como no texto colado.
-    Se o CV discordar do dossiê ou do LinkedIn numa data, o conflito aparece lado a lado,
-    e a sugestão é ficar com o dossiê ou com o LinkedIn.</p>
-  <form method="post" action="/p/{{ perfil.slug }}/importar/cv" enctype="multipart/form-data">
-    <input type="file" name="arquivo" required
-      accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
-    <small>Até {{ limite }}. E-mail, telefone e CPF saem do texto antes de ir para a IA.</small>
-    <button type="submit">Ler o CV</button>
-  </form>
-</article>
+<div class="grid">
+  <article>
+    <h2>Arquivo</h2>
+    <form method="post" action="/p/{{ perfil.slug }}/importar/arquivo" enctype="multipart/form-data">
+      <input type="file" name="arquivo" required accept=".pdf,.docx,.md,.txt">
+      <small>PDF do LinkedIn (Recursos → Salvar como PDF), CV em PDF ou DOCX, dossiê ou texto
+        em <code>.md</code>/<code>.txt</code>, até {{ limite }}. O JobFit descobre o que é.</small>
+      <button type="submit">Enviar</button>
+    </form>
+  </article>
+  <article>
+    <h2>Texto</h2>
+    <form method="post" action="/p/{{ perfil.slug }}/importar/texto">
+      <textarea name="texto" rows="5" required placeholder="Ex.: o que você fez no último emprego"></textarea>
+      <input name="nome" placeholder="Nome (opcional)">
+      <button type="submit">Continuar</button>
+    </form>
+  </article>
+</div>
+<p><small>Do texto, de um CV e das descrições do LinkedIn, quem tira os fatos é a IA, e cada fato
+  vem com o trecho de origem, conferido em código. E-mail, telefone e CPF saem do texto antes de ir
+  para a IA.</small></p>
 
 {% if importacoes %}
-<h2>Importações</h2>
+<h2>Atualizações anteriores</h2>
 <div class="overflow-auto">
 <table>
   <thead><tr><th>Quando</th><th>Fonte</th><th>Arquivo</th><th>Situação</th></tr></thead>
@@ -62,8 +47,8 @@
         {% if imp.status == "secoes" %}escolher as seções
         {% elif imp.status == "descartada" %}descartada
         {% elif imp.status == "revisao" and imp.extracao == "pendente" %}aguardando a IA
-        {% elif imp.status == "revisao" %}aguardando revisão
-        {% elif imp.versao_aplicada %}gravada na versão {{ imp.versao_aplicada }}
+        {% elif imp.status == "revisao" %}aguardando você
+        {% elif imp.versao_aplicada %}aplicada na versão {{ imp.versao_aplicada }}
         {% else %}concluída sem mudanças{% endif %}
       </td>
     </tr>

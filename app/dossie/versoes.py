@@ -198,3 +198,27 @@ def alterar_dossie(
     )
     gravar_texto(arquivo, texto)
     return registro
+
+
+def adotar_dossie(pasta_dados: Path, engine: Engine, perfil: Perfil, texto: str) -> VersaoDossie:
+    """Troca o dossiê inteiro por um dossiê pronto; a versão anterior fica no histórico."""
+    novo = ler_dossie(normalizar(texto))
+
+    def trocar(doc: Documento) -> None:
+        doc.cabecalho, doc.metadados, doc.partes = novo.cabecalho, novo.metadados, novo.partes
+
+    return alterar_dossie(pasta_dados, engine, perfil, "adocao", trocar)
+
+
+def restaurar_versao(
+    pasta_dados: Path, engine: Engine, perfil: Perfil, versao: int
+) -> VersaoDossie:
+    """Desfazer: o texto de uma versão antiga volta como versão nova; nada some do histórico."""
+    if obter_versao(engine, versao) is None:
+        raise KeyError(versao)
+    novo = ler_dossie(ler_texto(caminho_historico(pasta_dados, perfil.slug, versao)))
+
+    def trocar(doc: Documento) -> None:
+        doc.cabecalho, doc.metadados, doc.partes = novo.cabecalho, novo.metadados, novo.partes
+
+    return alterar_dossie(pasta_dados, engine, perfil, "restauracao", trocar)

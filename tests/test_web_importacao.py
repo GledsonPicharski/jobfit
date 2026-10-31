@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 from app.db import banco_do_perfil
 from app.dossie.formato import escrever_dossie, ler_dossie
 from app.dossie.modelos import Periodo
-from app.dossie.propostas import propostas_da_importacao
+from app.dossie.propostas import obter_importacao, propostas_da_importacao
 from app.dossie.versoes import caminho_dossie, versoes
 from app.ingestao import arquivos
 from app.main import create_app
@@ -18,7 +18,6 @@ ORIGEM = "http://127.0.0.1:8765"
 RAIZ = Path(__file__).resolve().parents[1]
 EXEMPLO = (RAIZ / "exemplos" / "perfil-ficticio" / "dossie.md").read_text(encoding="utf-8")
 PDF = gerar_pdf("pt")
-HTMX = {"HX-Request": "true"}
 
 
 @pytest.fixture
@@ -28,160 +27,149 @@ def cliente():
 
 @pytest.fixture
 def ana(pasta_dados):
+    """Perfil com o dossiê de exemplo: importar é atualizar."""
     perfil = criar_perfil(pasta_dados, "Ana Exemplo", "ana")
     caminho_dossie(pasta_dados, "ana").write_text(EXEMPLO, encoding="utf-8")
     return perfil
 
 
-def _dossie(pasta_dados) -> str:
-    return caminho_dossie(pasta_dados, "ana").read_text(encoding="utf-8")
+@pytest.fixture
+def bia(pasta_dados):
+    """Perfil novo, com o dossiê vazio: importar é montar o dossiê inicial."""
+    return criar_perfil(pasta_dados, "Bia Exemplo", "bia")
 
 
-def _enviar(cliente, conteudo=PDF, nome="Perfil da Ana.pdf"):
+def _dossie(pasta_dados, slug="ana") -> str:
+    return caminho_dossie(pasta_dados, slug).read_text(encoding="utf-8")
+
+
+def _enviar(cliente, conteudo=PDF, nome="Perfil da Ana.pdf", slug="ana"):
     return cliente.post(
-        "/p/ana/importar/linkedin",
-        files={"arquivo": (nome, conteudo, "application/pdf")},
+        f"/p/{slug}/importar/arquivo",
+        files={"arquivo": (nome, conteudo, "application/octet-stream")},
         follow_redirects=False,
     )
 
 
-def _propostas():
-    return propostas_da_importacao(banco_do_perfil("ana"), 1)
+def _propostas(slug="ana", importacao_id=1):
+    return propostas_da_importacao(banco_do_perfil(slug), importacao_id)
 
 
-def test_menu_tem_importar_e_tela_explica_o_pdf(cliente, ana):
-    assert 'href="/p/ana/importar"' in cliente.get("/p/ana").text
+def _aplicar(cliente, dados=None, slug="ana", importacao_id=1):
+    return cliente.post(
+        f"/p/{slug}/importacoes/{importacao_id}/aplicar",
+        data=dados or {},
+        follow_redirects=False,
+    )
+
+
+def _todas_marcadas(slug="ana", importacao_id=1) -> dict:
+    return {"aceitas": [str(p.id) for p in _propostas(slug, importacao_id) if p.acao == "novo"]}
+
+
+# --- atualizar um dossiê que já existe -------------------------------------------
+
+
+def test_atualizar_dossie_fica_dentro_do_dossie(cliente, ana):
+    assert 'href="/p/ana/importar"' not in cliente.get("/p/ana").text.split("</nav>")[0]
+    assert 'href="/p/ana/importar"' in cliente.get("/p/ana/dossie").text
     tela = cliente.get("/p/ana/importar").text
-    assert "Salvar como PDF" in tela
-    assert 'action="/p/ana/importar/linkedin"' in tela
-    assert 'enctype="multipart/form-data"' in tela
+    assert "Atualizar dossiê" in tela
+    assert 'action="/p/ana/importar/arquivo"' in tela
+    assert 'action="/p/ana/importar/texto"' in tela
 
 
-def test_enviar_pdf_cria_importacao_sem_tocar_no_dossie(cliente, ana, pasta_dados):
+def test_pdf_do_linkedin_mostra_so_o_que_muda_sem_gravar(cliente, ana, pasta_dados):
     resposta = _enviar(cliente)
     assert resposta.status_code == 303
     assert resposta.headers["location"] == "/p/ana/importacoes/1"
-    assert _dossie(pasta_dados) == EXEMPLO  # regra 4: nada antes da aprovação
+    assert _dossie(pasta_dados) == EXEMPLO  # nada gravado antes de aplicar
 
     salvos = sorted((pasta_perfil(pasta_dados, "ana") / "fontes").iterdir())
-    assert len(salvos) == 2  # o PDF e as descrições que a IA pode ler depois
     pdf = next(s for s in salvos if s.suffix == ".pdf")
-    assert pdf.name.endswith("_Perfil_da_Ana.pdf")
-    assert pdf.read_bytes() == PDF
+    assert pdf.name.endswith("_Perfil_da_Ana.pdf") and pdf.read_bytes() == PDF
     assert any(s.name.endswith("_descricoes.md") for s in salvos)
 
     tela = cliente.get("/p/ana/importacoes/1").text
-    assert "Perfil da Ana.pdf" in tela
+    assert "O que muda no dossiê" in tela
     assert "Coordenadora de Ciência de Dados — Empresa Exemplo" in tela
     assert "já estavam no dossiê" in tela
     assert "Gerente de Dados — Empresa Exemplo" not in tela  # F-010, mesmo início
     assert "janeiro de 2018 - fevereiro de 2023" in tela  # trecho de origem
+    assert 'type="checkbox" name="aceitas"' in tela
+    assert "Aplicar ao dossiê" in tela
 
 
-def test_aprovar_e_rejeitar_por_htmx_devolvem_o_cartao(cliente, ana):
+def test_aplicar_grava_o_marcado_e_o_desmarcado_nao_volta(cliente, ana, pasta_dados):
     _enviar(cliente)
-    primeira, segunda = _propostas()[:2]
-    url = f"/p/ana/importacoes/1/propostas/{primeira.id}"
+    novas = [p for p in _propostas() if p.acao == "novo"]
+    desmarcada, marcadas = novas[0], novas[1:]
 
-    resposta = cliente.post(url, data={"decisao": "aprovada"}, headers=HTMX)
-    assert resposta.status_code == 200
-    assert f'id="proposta-{primeira.id}"' in resposta.text
-    assert "Aprovada" in resposta.text
-    assert 'id="resumo-importacao" hx-swap-oob="true"' in resposta.text
-
-    url = f"/p/ana/importacoes/1/propostas/{segunda.id}"
-    cliente.post(url, data={"decisao": "rejeitada"}, headers=HTMX)
-    decisoes = {p.id: p.decisao for p in _propostas()}
-    assert decisoes[primeira.id] == "aprovada"
-    assert decisoes[segunda.id] == "rejeitada"
-
-
-def test_decidir_sem_htmx_volta_para_a_tela(cliente, ana):
-    _enviar(cliente)
-    proposta = _propostas()[0]
-    resposta = cliente.post(
-        f"/p/ana/importacoes/1/propostas/{proposta.id}",
-        data={"decisao": "aprovada"},
-        follow_redirects=False,
-    )
+    resposta = _aplicar(cliente, {"aceitas": [str(p.id) for p in marcadas]})
     assert resposta.status_code == 303
-    assert resposta.headers["location"] == f"/p/ana/importacoes/1#proposta-{proposta.id}"
+    numero = versoes(banco_do_perfil("ana"))[0].versao
+    assert resposta.headers["location"] == f"/p/ana/dossie?gravado={numero}"
+
+    doc = ler_dossie(_dossie(pasta_dados))
+    novos = [f for f in doc.fatos if f.origem == f"linkedin_pdf {date.today().isoformat()}"]
+    assert len(novos) == len(marcadas)
+    decisoes = {p.id: p.decisao for p in _propostas()}
+    assert decisoes[desmarcada.id] == "rejeitada"
+    assert all(decisoes[p.id] == "aprovada" for p in marcadas)
+
+    tela = cliente.get(resposta.headers["location"]).text
+    assert f"Dossiê atualizado: versão {numero}" in tela
+    assert "Desfazer" in tela
+
+    _enviar(cliente, nome="de novo.pdf")
+    textos = {p.chave for p in _propostas(importacao_id=2)}
+    assert desmarcada.chave not in textos
 
 
-def test_editar_grava_o_texto_da_pessoa(cliente, ana, pasta_dados):
+def test_corrigir_um_item_antes_de_aplicar(cliente, ana, pasta_dados):
     _enviar(cliente)
     cargo = next(p for p in _propostas() if "Coordenadora" in p.dados)
-    cliente.post(
-        f"/p/ana/importacoes/1/propostas/{cargo.id}",
-        data={
-            "decisao": "editada",
-            "texto": "Coordenadora de Ciência de Dados na Empresa Exemplo",
-            "empresa": "Empresa Exemplo",
-            "cargo": "Coordenadora de Ciência de Dados",
-            "inicio": "2018-01",
-            "fim": "2023-02",
-        },
-        headers=HTMX,
+    dados = _todas_marcadas()
+    dados.update(
+        {
+            f"texto-{cargo.id}": "Coordenadora de Ciência de Dados na Empresa Exemplo",
+            f"empresa-{cargo.id}": "Empresa Exemplo",
+            f"cargo-{cargo.id}": "Coordenadora de Ciência de Dados",
+            f"inicio-{cargo.id}": "2018-01",
+            f"fim-{cargo.id}": "2023-02",
+        }
     )
-    cliente.post("/p/ana/importacoes/1/aprovar-pendentes")
-    cliente.post("/p/ana/importacoes/1/gravar")
+    _aplicar(cliente, dados)
     doc = ler_dossie(_dossie(pasta_dados))
     fato = next(f for f in doc.fatos if f.texto.startswith("Coordenadora"))
     assert fato.texto == "Coordenadora de Ciência de Dados na Empresa Exemplo"
     assert fato.periodo == Periodo(inicio="2018-01", fim="2023-02")
+    assert {p.id: p.decisao for p in _propostas()}[cargo.id] == "editada"
 
 
-def test_edicao_invalida_mostra_o_erro_no_cartao(cliente, ana):
+def test_correcao_invalida_nao_grava_e_mostra_o_erro(cliente, ana, pasta_dados):
     _enviar(cliente)
-    proposta = _propostas()[0]
-    resposta = cliente.post(
-        f"/p/ana/importacoes/1/propostas/{proposta.id}",
-        data={"decisao": "editada", "texto": "", "inicio": "ontem"},
-        headers=HTMX,
-    )
-    assert resposta.status_code == 200
+    proposta = next(p for p in _propostas() if p.acao == "novo")
+    dados = {
+        "aceitas": [str(proposta.id)],
+        f"texto-{proposta.id}": "Texto",
+        f"inicio-{proposta.id}": "ontem",
+    }
+    resposta = _aplicar(cliente, dados)
+    assert resposta.status_code == 400
     assert "aviso falha" in resposta.text
-    assert _propostas()[0].decisao == "pendente"
-
-
-def test_gravar_com_pendente_e_recusado(cliente, ana, pasta_dados):
-    _enviar(cliente)
-    resposta = cliente.post("/p/ana/importacoes/1/gravar")
-    assert resposta.status_code == 409
-    assert "pendente(s)" in resposta.text
     assert _dossie(pasta_dados) == EXEMPLO
-
-
-def test_aprovar_pendentes_e_gravar_leva_ao_diff(cliente, ana, pasta_dados):
-    _enviar(cliente)
-    rejeitada = _propostas()[0]
-    cliente.post(f"/p/ana/importacoes/1/propostas/{rejeitada.id}", data={"decisao": "rejeitada"})
-    cliente.post("/p/ana/importacoes/1/aprovar-pendentes")
-    resposta = cliente.post("/p/ana/importacoes/1/gravar", follow_redirects=False)
-    assert resposta.status_code == 303
-    numero = versoes(banco_do_perfil("ana"))[0].versao
-    assert resposta.headers["location"] == f"/p/ana/dossie/historico/{numero}"
-
-    doc = ler_dossie(_dossie(pasta_dados))
-    novos = [f for f in doc.fatos if f.origem == f"linkedin_pdf {date.today().isoformat()}"]
-    assert len(novos) == len(_propostas()) - 1
-    assert all(f.texto in _dossie(pasta_dados) for f in novos)
-
-    tela = cliente.get("/p/ana/importacoes/1").text
-    assert "Gravada na versão" in tela
-    assert "/propostas/" not in tela  # sem botões depois de gravada
 
 
 def test_email_do_pdf_entra_fora_da_ia(cliente, ana, pasta_dados):
     _enviar(cliente)
-    cliente.post("/p/ana/importacoes/1/aprovar-pendentes")
-    cliente.post("/p/ana/importacoes/1/gravar")
+    _aplicar(cliente, _todas_marcadas())
     doc = ler_dossie(_dossie(pasta_dados))
     email = next(f for f in doc.fatos if f.texto.startswith("E-mail:"))
     assert email.nao_enviar_ia is True
 
 
-def test_conflito_mostra_os_dois_periodos(cliente, ana, pasta_dados):
+def test_conflito_mostra_os_dois_periodos_e_a_escolha(cliente, ana, pasta_dados):
     doc = ler_dossie(EXEMPLO)
     f010 = doc.fato("F-010")
     doc.substituir_fato(
@@ -191,45 +179,113 @@ def test_conflito_mostra_os_dois_periodos(cliente, ana, pasta_dados):
 
     _enviar(cliente)
     tela = cliente.get("/p/ana/importacoes/1").text
-    assert "No dossiê (F-010)" in tela
-    assert "2023-03 – 2024-01" in tela
-    assert "2023-03 – atual" in tela
-    assert "Usar o da fonte" in tela
+    assert "Diferente do dossiê" in tela
+    assert "Manter o do dossiê: <strong>2023-03 – 2024-01</strong>" in tela
+    assert "Usar o da fonte: <strong>2023-03 – atual</strong>" in tela
+
+    conflito = next(p for p in _propostas() if p.acao == "conflito")
+    _aplicar(cliente, {f"conflito-{conflito.id}": "fonte"})
+    assert ler_dossie(_dossie(pasta_dados)).fato("F-010").periodo == Periodo(inicio="2023-03")
 
 
-def test_importar_de_novo_nao_repete_o_rejeitado(cliente, ana):
+def test_desfazer_volta_a_versao_anterior(cliente, ana, pasta_dados):
+    cliente.get("/p/ana/dossie")  # registra o dossiê de exemplo como versão
+    antes = ler_dossie(_dossie(pasta_dados)).fatos
     _enviar(cliente)
-    for proposta in _propostas():
-        cliente.post(f"/p/ana/importacoes/1/propostas/{proposta.id}", data={"decisao": "rejeitada"})
-    cliente.post("/p/ana/importacoes/1/gravar")
+    gravada = _aplicar(cliente, _todas_marcadas()).headers["location"]
+    numero = int(gravada.rsplit("=", 1)[1])
+
+    resposta = cliente.post(
+        f"/p/ana/dossie/historico/{numero - 1}/restaurar", follow_redirects=False
+    )
+    assert resposta.status_code == 303
+    assert ler_dossie(_dossie(pasta_dados)).fatos == antes
+    assert versoes(banco_do_perfil("ana"))[0].motivo == "restauracao"
+    assert cliente.post("/p/ana/dossie/historico/99/restaurar").status_code == 404
+
+
+def test_descartar(cliente, ana, pasta_dados):
     _enviar(cliente)
-    assert propostas_da_importacao(banco_do_perfil("ana"), 2) == []
-    assert "Extrair fatos com a IA" in cliente.get("/p/ana/importacoes/2").text
+    resposta = cliente.post("/p/ana/importacoes/1/descartar", follow_redirects=False)
+    assert resposta.headers["location"] == "/p/ana/importar"
+    assert obter_importacao(banco_do_perfil("ana"), 1).status == "descartada"
+    assert _dossie(pasta_dados) == EXEMPLO
+
+
+# --- dossiê inicial ---------------------------------------------------------------
+
+
+def test_dossie_vazio_oferece_os_tres_caminhos(cliente, bia):
+    tela = cliente.get("/p/bia/dossie").text
+    assert "Monte seu dossiê" in tela
+    assert "Pelo LinkedIn" in tela and "Pelo que você já tem" in tela and "À mão" in tela
+    assert 'action="/p/bia/importar/arquivo"' in tela
+    assert "+ Adicionar" in tela
+
+
+def test_linkedin_num_dossie_vazio_vira_rascunho_aprovado_de_uma_vez(cliente, bia, pasta_dados):
+    _enviar(cliente, slug="bia")
+    tela = cliente.get("/p/bia/importacoes/1").text
+    assert "Rascunho do seu dossiê" in tela
+    assert "Usar como meu dossiê" in tela
+
+    resposta = _aplicar(cliente, _todas_marcadas("bia"), slug="bia")
+    assert resposta.headers["location"].startswith("/p/bia/dossie?gravado=")
+    doc = ler_dossie(_dossie(pasta_dados, "bia"))
+    assert len(doc.fatos) == len([p for p in _propostas("bia") if p.acao == "novo"])
+    assert "Monte seu dossiê" not in cliente.get("/p/bia/dossie").text
+
+
+def test_dossie_pronto_num_perfil_vazio_e_adotado_direto(cliente, bia, pasta_dados):
+    resposta = _enviar(cliente, EXEMPLO.encode("utf-8"), nome="meu dossiê.md", slug="bia")
+    assert resposta.status_code == 303
+    assert resposta.headers["location"].startswith("/p/bia/dossie?gravado=")
+    doc = ler_dossie(_dossie(pasta_dados, "bia"))
+    assert [f.id for f in doc.fatos] == [f.id for f in ler_dossie(EXEMPLO).fatos]
+    assert versoes(banco_do_perfil("bia"))[0].motivo == "adocao"
+    assert "dossiê enviado" in cliente.get(resposta.headers["location"]).text
+
+
+def test_dossie_pronto_num_perfil_com_dossie_compara_sem_ia(cliente, ana, pasta_dados):
+    doc = ler_dossie(EXEMPLO)
+    f010 = doc.fato("F-010")
+    doc.substituir_fato(f010.model_copy(update={"texto": "Liderou a área de dados."}))
+    outro = escrever_dossie(doc).replace("id: F-010", "id: F-900")
+    _enviar(cliente, outro.encode("utf-8"), nome="outro.md")
+    assert _dossie(pasta_dados) == EXEMPLO
+    importacao = obter_importacao(banco_do_perfil("ana"), 1)
+    assert importacao.extracao is None  # sem IA
+    assert all(p.acao != "novo" or "F-" not in p.dados for p in _propostas())
+
+
+def test_dossie_enviado_com_erro_mostra_a_linha(cliente, bia):
+    quebrado = "## Formação\n\n```fatos\n- id: F-001\n  tipo: inventado\n  texto: x\n```\n"
+    resposta = _enviar(cliente, quebrado.encode("utf-8"), nome="dossie.md", slug="bia")
+    assert resposta.status_code == 400
+    assert "O dossiê enviado tem um erro" in resposta.text
+    assert "Linha 4: fato F-001" in resposta.text
+
+
+# --- arquivos recusados -------------------------------------------------------------
 
 
 def test_arquivo_grande_demais_e_recusado(cliente, ana, pasta_dados, monkeypatch):
     monkeypatch.setattr(arquivos, "LIMITE_BYTES", 1000)
     resposta = _enviar(cliente)
     assert resposta.status_code == 413
-    assert "10 MB" in resposta.text or "grande" in resposta.text
     assert not list((pasta_perfil(pasta_dados, "ana") / "fontes").iterdir())
 
 
-def test_arquivo_que_nao_e_pdf_do_linkedin(cliente, ana, pasta_dados):
-    resposta = _enviar(cliente, conteudo=b"texto qualquer", nome="cv.pdf")
+def test_binario_desconhecido(cliente, ana, pasta_dados):
+    resposta = _enviar(cliente, conteudo=b"\x00\x01\x02 binario", nome="x.bin")
     assert resposta.status_code == 400
-    assert "PDF" in resposta.text
+    assert "Não reconheci o arquivo" in resposta.text
     assert not list((pasta_perfil(pasta_dados, "ana") / "fontes").iterdir())
 
 
-def test_importacao_inexistente_ou_proposta_de_outra_importacao(cliente, ana):
+def test_importacao_inexistente(cliente, ana):
     assert cliente.get("/p/ana/importacoes/99").status_code == 404
-    _enviar(cliente)
-    proposta = _propostas()[0]
-    resposta = cliente.post(
-        f"/p/ana/importacoes/99/propostas/{proposta.id}", data={"decisao": "aprovada"}
-    )
-    assert resposta.status_code == 404
+    assert cliente.post("/p/ana/importacoes/99/aplicar").status_code == 404
 
 
 @pytest.mark.parametrize(

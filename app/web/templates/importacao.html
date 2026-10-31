@@ -1,18 +1,20 @@
 {% extends "base.html" %}
-{% block titulo %}Importação · {{ perfil.nome }} · JobFit{% endblock %}
+{% block titulo %}{% if inicial %}Rascunho do dossiê{% else %}O que muda no dossiê{% endif %} · {{ perfil.nome }} · JobFit{% endblock %}
 {% block conteudo %}
-<h1>{{ FONTES_IMPORTACAO.get(importacao.fonte, importacao.fonte) }}: {{ importacao.nome }}</h1>
-<p><small>importado em {{ importacao.criado_em | hora }}
-  {% if importacao.arquivo %} · guardado em <code>{{ importacao.arquivo }}</code>{% endif %}
-  · <a href="/p/{{ perfil.slug }}/importar">voltar</a></small></p>
+<h1>{% if inicial and aberta %}Rascunho do seu dossiê{% else %}O que muda no dossiê{% endif %}</h1>
+<p><small>{{ FONTES_IMPORTACAO.get(importacao.fonte, importacao.fonte) }}: {{ importacao.nome }}
+  · {{ importacao.criado_em | hora }}
+  {% if importacao.duplicados %} · {{ importacao.duplicados }} item(ns) já estavam no dossiê{% endif %}
+  {% if importacao.ja_rejeitados %} · {{ importacao.ja_rejeitados }} recusado(s) antes, não repetidos{% endif %}
+  · <a href="/p/{{ perfil.slug }}/dossie">voltar ao dossiê</a></small></p>
 
 {% if not aberta %}
 <article class="aviso">
   {% if importacao.versao_aplicada %}
-  <p>Gravada na versão {{ importacao.versao_aplicada }} do dossiê.
+  <p>Aplicada na versão {{ importacao.versao_aplicada }} do dossiê.
     <a href="/p/{{ perfil.slug }}/dossie/historico/{{ importacao.versao_aplicada }}">Ver o que mudou</a></p>
   {% elif importacao.status == "descartada" %}
-  <p>Descartada: nada foi gravado, e o que estava aqui pode ser proposto de novo.</p>
+  <p>Descartada: nada foi gravado, e o que estava aqui pode aparecer de novo.</p>
   {% else %}
   <p>Concluída sem mudanças no dossiê.</p>
   {% endif %}
@@ -27,42 +29,84 @@
 <article class="aviso">
   {% if importacao.fonte == "linkedin_pdf" %}
   <p>O resumo e as descrições dos cargos ainda não foram lidos. A IA pode tirar deles
-    resultados, competências e ferramentas, cada um com o trecho de origem.</p>
+    resultados, competências e ferramentas.</p>
   {% else %}
   <p>A IA ainda não leu o texto.</p>
   {% endif %}
-  <p><a href="/p/{{ perfil.slug }}/importacoes/{{ importacao.id }}/extrair" role="button">Extrair fatos com a IA</a>
-    <small>· texto enviado: <code>{{ importacao.extraido }}</code></small></p>
+  <a href="/p/{{ perfil.slug }}/importacoes/{{ importacao.id }}/extrair" role="button">Extrair fatos com a IA</a>
 </article>
 {% endif %}
 
-{% with oob = False %}{% include "_resumo_importacao.html" %}{% endwith %}
+{% if aberta and cartoes %}
+<p>{% if inicial %}Confira o rascunho: desmarque o que não quer e corrija o que precisar.
+  {% else %}Só o que é novo ou diferente do dossiê. Desmarque o que não quer.{% endif %}
+  Itens com ⚠ vêm desmarcados: a IA citou algo que não está na fonte.</p>
 
-{% if not cartoes and not extracao_pendente %}
-<p><strong>Nada novo:</strong> tudo o que veio desta fonte já está no dossiê ou foi rejeitado antes.</p>
+<form method="post" action="/p/{{ perfil.slug }}/importacoes/{{ importacao.id }}/aplicar" class="lote">
+  {% if conflitos %}
+  <h2>Diferente do dossiê</h2>
+  {% for c in conflitos %}
+  {% set atual = atuais.get(c.p.fato_alvo) %}
+  <div class="item">
+    <p>{{ atual.texto if atual else c.dados.texto }}
+      {% if c.p.motivo %}<br><small>{{ c.p.motivo }}</small>{% endif %}</p>
+    <label><input type="radio" name="conflito-{{ c.p.id }}" value="dossie" {% if not usar_fonte[c.p.id] %}checked{% endif %}>
+      Manter o do dossiê: <strong>{{ (atual.periodo | periodo) if atual and atual.periodo else "sem período" }}</strong></label>
+    <label><input type="radio" name="conflito-{{ c.p.id }}" value="fonte" {% if usar_fonte[c.p.id] %}checked{% endif %}>
+      Usar o da fonte: <strong>{{ c.dados.periodo | periodo }}</strong></label>
+  </div>
+  {% endfor %}
+  {% endif %}
+
+  {% for tipo, itens in grupos.items() %}
+  <h3>{{ ROTULOS_TIPO.get(tipo, tipo) }}</h3>
+  {% for c in itens %}
+  {% set d = c.dados %}{% set pid = c.p.id %}
+  <div class="item" id="proposta-{{ pid }}">
+    <label>
+      <input type="checkbox" name="aceitas" value="{{ pid }}" {% if c.p.decisao != "rejeitada" %}checked{% endif %}>
+      {{ d.texto }}
+      {% if d.periodo %}<small> · {{ d.periodo | periodo }}</small>{% endif %}
+      {% if d.nao_enviar_ia %}<small> · não vai para a IA</small>{% endif %}
+    </label>
+    {% for alerta in c.alertas %}<small class="falha">⚠ {{ alerta }}</small><br>{% endfor %}
+    <details>
+      <summary><small>corrigir{% if c.p.trecho %} · ver a origem{% endif %}</small></summary>
+      {% if c.p.trecho %}<blockquote><small>{{ c.p.trecho }}</small></blockquote>{% endif %}
+      <label>Texto <textarea name="texto-{{ pid }}" rows="2">{{ d.texto }}</textarea></label>
+      <div class="grid">
+        <label>Empresa <input name="empresa-{{ pid }}" value="{{ d.empresa or '' }}"></label>
+        <label>Cargo <input name="cargo-{{ pid }}" value="{{ d.cargo or '' }}"></label>
+        <label>Início <input name="inicio-{{ pid }}" value="{{ d.periodo.inicio if d.periodo and d.periodo.inicio else '' }}" placeholder="2023-03"></label>
+        <label>Fim <input name="fim-{{ pid }}" value="{{ d.periodo.fim if d.periodo and d.periodo.fim else '' }}" placeholder="vazio = atual"></label>
+      </div>
+    </details>
+  </div>
+  {% endfor %}
+  {% endfor %}
+
+  <button type="submit">{% if inicial %}Usar como meu dossiê{% else %}Aplicar ao dossiê{% endif %}</button>
+  <small>Dá para desfazer depois. O que você desmarcar não volta a aparecer.</small>
+</form>
+{% elif aberta and not extracao_pendente %}
+<p><strong>Nada novo:</strong> tudo o que veio desta fonte já está no dossiê ou foi recusado antes.</p>
+{% elif not aberta and cartoes %}
+<ul class="fatos">
+  {% for c in cartoes %}
+  <li class="fato"><div class="fato-texto">
+    {% if c.p.decisao in ("aprovada", "editada") %}✓{% else %}✗{% endif %} {{ c.dados.texto }}
+  </div></li>
+  {% endfor %}
+</ul>
 {% endif %}
 
-{% for c in cartoes %}
-{% with oob = False, erro = "" %}{% include "_proposta.html" %}{% endwith %}
-{% endfor %}
-
-{% if aberta %}
-<div class="acoes-importacao">
-  {% if pendentes %}
-  <form method="post" action="/p/{{ perfil.slug }}/importacoes/{{ importacao.id }}/aprovar-pendentes">
-    <button type="submit" class="secondary">Aprovar todas as pendentes</button>
-  </form>
-  {% endif %}
-  {% if cartoes or not extracao_pendente %}
-  <form method="post" action="/p/{{ perfil.slug }}/importacoes/{{ importacao.id }}/gravar">
-    <button type="submit">{% if cartoes %}Gravar no dossiê{% else %}Concluir{% endif %}</button>
-  </form>
-  {% endif %}
-  <form method="post" action="/p/{{ perfil.slug }}/importacoes/{{ importacao.id }}/descartar">
-    <button type="submit" class="outline secondary">Descartar</button>
-  </form>
-</div>
-<p><small>Gravar cria uma versão nova do dossiê com o que você aprovou ou editou.
-  O que você rejeitar não é proposto de novo em importações futuras.</small></p>
+{% if aberta and (cartoes or extracao_pendente) %}
+<form method="post" action="/p/{{ perfil.slug }}/importacoes/{{ importacao.id }}/descartar">
+  <button type="submit" class="outline secondary">Descartar</button>
+</form>
+{% elif aberta %}
+<form method="post" action="/p/{{ perfil.slug }}/importacoes/{{ importacao.id }}/aplicar">
+  <button type="submit">Concluir</button>
+</form>
 {% endif %}
 {% endblock %}

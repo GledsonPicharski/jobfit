@@ -1,9 +1,36 @@
 {% extends "base.html" %}
 {% block titulo %}Dossiê · {{ perfil.nome }} · JobFit{% endblock %}
 {% block conteudo %}
-<h1>Dossiê</h1>
+{% macro formulario_adicionar(secao) %}
+<details class="adicionar">
+  <summary><small>+ Adicionar</small></summary>
+  <form method="post" action="/p/{{ perfil.slug }}/dossie/fatos">
+    <div class="grid">
+      <label>Tipo
+        <select name="tipo">
+          {% for valor, rotulo in TIPOS.items() %}
+          <option value="{{ valor }}" {% if valor == secao.tipo %}selected{% endif %}>{{ rotulo }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>Empresa <input name="empresa" value="{{ secao.empresa or '' }}" placeholder="se for de um emprego"></label>
+    </div>
+    <label>Texto <textarea name="texto" rows="2" required></textarea></label>
+    <details>
+      <summary><small>cargo e período</small></summary>
+      <div class="grid">
+        <label>Cargo <input name="cargo"></label>
+        <label>Início <input name="inicio" placeholder="2023-03"></label>
+        <label>Fim <input name="fim" placeholder="vazio = atual"></label>
+      </div>
+    </details>
+    <button type="submit">Adicionar ao dossiê</button>
+  </form>
+</details>
+{% endmacro %}
 
 {% if erro %}
+<h1>Dossiê</h1>
 <article class="aviso falha">
   <p><strong>O dossiê tem um erro e o JobFit não vai gravar nada nele até ser corrigido.</strong></p>
   <p>{{ erro }}</p>
@@ -12,26 +39,71 @@
 </article>
 {% else %}
 
-<p>
+<div class="cabecalho-dossie">
+  <h1>Dossiê</h1>
+  {% if doc.fatos %}<a href="/p/{{ perfil.slug }}/importar" role="button" class="secondary">Atualizar dossiê</a>{% endif %}
+</div>
+<p><small>
   versão {{ doc.metadados.get("versao", "?") }} · {{ doc.fatos | length }} fato(s) ·
   <a href="/p/{{ perfil.slug }}/dossie/historico">histórico</a>
-</p>
+</small></p>
+
+{% if gravado %}
+<article class="aviso sucesso-caixa">
+  Dossiê atualizado: versão {{ gravado.versao }} ({{ MOTIVOS_VERSAO.get(gravado.motivo, gravado.motivo) }}).
+  <a href="/p/{{ perfil.slug }}/dossie/historico/{{ gravado.versao }}">Ver o que mudou</a>
+  {% if anterior %}
+  <form method="post" action="/p/{{ perfil.slug }}/dossie/historico/{{ anterior }}/restaurar" class="em-linha">
+    <button type="submit" class="outline secondary">Desfazer</button>
+  </form>
+  {% endif %}
+</article>
+{% endif %}
+
+{% if erro_form %}
+<article class="aviso falha"><p>Não deu para adicionar: {{ erro_form }}</p></article>
+{% endif %}
 
 {% if importacoes %}
 <article class="aviso">
-  <strong>{{ importacoes | length }} importação(ões) aguardando sua revisão</strong>
-  <ul>
-    {% for imp in importacoes %}
-    <li><a href="/p/{{ perfil.slug }}/importacoes/{{ imp.id }}">{{ imp.nome }}</a></li>
-    {% endfor %}
-  </ul>
+  Mudanças aguardando você:
+  {% for imp in importacoes %}<a href="/p/{{ perfil.slug }}/importacoes/{{ imp.id }}">{{ imp.nome }}</a>{% if not loop.last %}, {% endif %}{% endfor %}
+</article>
+{% endif %}
+
+{% if not doc.fatos %}
+<article class="comecar">
+  <h2>Monte seu dossiê</h2>
+  <p>É a base de tudo: avaliação de vagas, CV e LinkedIn. Escolha por onde começar; depois
+    ele vai sendo melhorado conforme você usa o JobFit.</p>
+  <div class="grid">
+    <div>
+      <h3>Pelo LinkedIn</h3>
+      <p><small>No LinkedIn, abra o seu perfil e use <strong>Recursos → Salvar como PDF</strong>.
+        O JobFit monta o rascunho e você aprova de uma vez.</small></p>
+    </div>
+    <div>
+      <h3>Pelo que você já tem</h3>
+      <p><small>Um dossiê pronto (<code>.md</code>), um CV em PDF ou DOCX, ou um texto sobre
+        a sua carreira.</small></p>
+    </div>
+    <div>
+      <h3>À mão</h3>
+      <p><small>Use <strong>+ Adicionar</strong> em cada seção abaixo.</small></p>
+    </div>
+  </div>
+  <form method="post" action="/p/{{ perfil.slug }}/importar/arquivo" enctype="multipart/form-data">
+    <input type="file" name="arquivo" required accept=".pdf,.docx,.md,.txt">
+    <small>PDF do LinkedIn, CV, dossiê ou texto, até {{ limite }}. O JobFit descobre o que é.</small>
+    <button type="submit">Enviar</button>
+  </form>
 </article>
 {% endif %}
 
 {% if propostos %}
 <article class="aviso">
-  <strong>{{ propostos | length }} fato(s) proposto(s) aguardando sua confirmação</strong>
-  <p><small>Fato proposto não vai para CV nem LinkedIn até ser confirmado.</small></p>
+  <strong>{{ propostos | length }} fato(s) para confirmar.</strong>
+  <small>Fato proposto não vai para CV nem LinkedIn até ser confirmado.</small>
   <ul>
     {% for f in propostos %}
     <li><a href="#{{ f.id }}">{{ f.id }}</a> · {{ f.texto | truncate(80) }}</li>
@@ -40,6 +112,7 @@
 </article>
 {% endif %}
 
+{% if doc.fatos %}
 <nav class="abas">
   <a href="/p/{{ perfil.slug }}/dossie" {% if visao != "cv" %}aria-current="page"{% endif %}>Tudo</a>
   <a href="/p/{{ perfil.slug }}/dossie?visao=cv" {% if visao == "cv" %}aria-current="page"{% endif %}>Visão de CV</a>
@@ -47,54 +120,64 @@
 {% if visao == "cv" %}
 <p><small>Só os fatos que podem ir para CV, LinkedIn ou e-mail: confirmados e sem 🔒.</small></p>
 {% endif %}
+{% endif %}
 
 {% for secao in secoes %}
   {% if secao.titulo %}
   {% if secao.nivel == 2 %}<h2>{{ secao.titulo }}</h2>{% else %}<h3>{{ secao.titulo }}</h3>{% endif %}
   {% endif %}
+  <ul class="fatos">
   {% for f in secao.fatos %}
-  <article class="fato{% if f.privado %} privado{% endif %}" id="{{ f.id }}">
-    <p>
-      <small>{{ f.id }} · {{ ROTULOS_TIPO.get(f.tipo, f.tipo) }}
-        {% if f.periodo %} · {{ f.periodo | periodo }}{% endif %}
-        {% if f.status != "confirmado" %} · {{ f.status }}{% endif %}</small><br>
-      {% if f.privado %}🔒 {% endif %}{{ f.texto }}
-    </p>
-    <footer>
-      <small>
-        {% if f.origem %}origem: {{ f.origem }}{% endif %}
-        {% if f.nao_enviar_ia %} · não vai para a IA{% endif %}
-      </small>
+    <li class="fato{% if f.privado %} privado{% endif %}{% if f.status != 'confirmado' %} status-{{ f.status }}{% endif %}" id="{{ f.id }}">
+      <div class="fato-texto">
+        {% if f.privado %}🔒 {% endif %}{{ f.texto }}
+        <small class="fato-meta">
+          {% if f.periodo %}{{ f.periodo | periodo }} · {% endif %}{{ ROTULOS_TIPO.get(f.tipo, f.tipo) }}
+          {% if f.status != "confirmado" %} · <strong>{{ f.status }}</strong>{% endif %}
+          {% if f.nao_enviar_ia %} · não vai para a IA{% endif %}
+        </small>
+      </div>
       {% if visao != "cv" %}
-      <span class="acoes">
-        {% if f.status != "confirmado" %}
-        <form method="post" action="/p/{{ perfil.slug }}/dossie/fatos/{{ f.id }}/status">
-          <input type="hidden" name="status" value="confirmado">
-          <button type="submit">Confirmar</button>
-        </form>
-        {% endif %}
+      <div class="fato-acoes">
         {% if f.status == "proposto" %}
         <form method="post" action="/p/{{ perfil.slug }}/dossie/fatos/{{ f.id }}/status">
-          <input type="hidden" name="status" value="rejeitado">
-          <button type="submit" class="outline secondary">Rejeitar</button>
+          <input type="hidden" name="status" value="confirmado">
+          <button type="submit" class="pequeno">Confirmar</button>
         </form>
         {% endif %}
-        <form method="post" action="/p/{{ perfil.slug }}/dossie/fatos/{{ f.id }}/alternar">
-          <input type="hidden" name="campo" value="privado">
-          <button type="submit" class="outline secondary">{% if f.privado %}Tirar 🔒{% else %}Marcar 🔒{% endif %}</button>
-        </form>
-        <form method="post" action="/p/{{ perfil.slug }}/dossie/fatos/{{ f.id }}/alternar">
-          <input type="hidden" name="campo" value="nao_enviar_ia">
-          <button type="submit" class="outline secondary">{% if f.nao_enviar_ia %}Liberar para a IA{% else %}Não enviar à IA{% endif %}</button>
-        </form>
-      </span>
+        <details class="dropdown">
+          <summary aria-label="Mais ações">⋯</summary>
+          <ul dir="rtl">
+            {% if f.status == "rejeitado" %}
+            <li><form method="post" action="/p/{{ perfil.slug }}/dossie/fatos/{{ f.id }}/status">
+              <input type="hidden" name="status" value="confirmado">
+              <button type="submit" class="link">Confirmar</button></form></li>
+            {% endif %}
+            {% if f.status == "proposto" %}
+            <li><form method="post" action="/p/{{ perfil.slug }}/dossie/fatos/{{ f.id }}/status">
+              <input type="hidden" name="status" value="rejeitado">
+              <button type="submit" class="link">Rejeitar</button></form></li>
+            {% endif %}
+            <li><form method="post" action="/p/{{ perfil.slug }}/dossie/fatos/{{ f.id }}/alternar">
+              <input type="hidden" name="campo" value="privado">
+              <button type="submit" class="link">{% if f.privado %}Tirar 🔒{% else %}Marcar 🔒 (fora do CV){% endif %}</button></form></li>
+            <li><form method="post" action="/p/{{ perfil.slug }}/dossie/fatos/{{ f.id }}/alternar">
+              <input type="hidden" name="campo" value="nao_enviar_ia">
+              <button type="submit" class="link">{% if f.nao_enviar_ia %}Liberar para a IA{% else %}Não enviar à IA{% endif %}</button></form></li>
+            <li><form method="post" action="/p/{{ perfil.slug }}/dossie/fatos/{{ f.id }}/remover">
+              <button type="submit" class="link texto-perigo">Remover</button></form></li>
+            <li><small>{{ f.id }}{% if f.origem %} · {{ f.origem }}{% endif %}</small></li>
+          </ul>
+        </details>
+      </div>
       {% endif %}
-    </footer>
-  </article>
+    </li>
   {% endfor %}
+  </ul>
+  {% if visao != "cv" and secao.tipo %}{{ formulario_adicionar(secao) }}{% endif %}
 {% endfor %}
 
-<p><small>Para editar textos à mão, abra o arquivo no seu editor. O JobFit registra a edição
+<p><small>Também dá para editar o arquivo à mão, no seu editor. O JobFit registra a edição
   como uma versão nova da próxima vez que você abrir esta página:<br><code>{{ arquivo }}</code></small></p>
 {% endif %}
 {% endblock %}

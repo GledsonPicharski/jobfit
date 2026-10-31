@@ -26,3 +26,27 @@ pre.diff .marca { color: var(--pico-muted-color); }
 .acoes-importacao { display: flex; flex-wrap: wrap; gap: 0.75rem; }
 .acoes-importacao form { margin: 0; }
 form.secoes label { display: block; margin-bottom: 0.35rem; }
+.menu-perfil ul li { direction: ltr; text-align: left; }
+.cabecalho-dossie { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
+.cabecalho-dossie h1 { margin: 0; }
+ul.fatos { list-style: none; padding: 0; margin-bottom: 0.5rem; }
+ul.fatos li.fato { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.75rem;
+  padding: 0.4rem 0; border-bottom: 1px solid var(--pico-muted-border-color); list-style: none; }
+.fato-meta { display: block; color: var(--pico-muted-color); }
+li.status-proposto { background: var(--pico-mark-background-color); }
+li.status-rejeitado .fato-texto { text-decoration: line-through; color: var(--pico-muted-color); }
+.fato-acoes { display: flex; align-items: center; gap: 0.25rem; }
+.fato-acoes form { margin: 0; }
+.fato-acoes details.dropdown { margin: 0; width: auto; }
+.fato-acoes details.dropdown > summary { height: auto; padding: 0.1rem 0.6rem; border: none; background: none; }
+.fato-acoes details.dropdown > summary::after { display: none; }
+.fato-acoes details.dropdown ul li { direction: ltr; text-align: left; }
+button.link { background: none; border: none; padding: 0; margin: 0; color: var(--pico-primary); width: auto; text-align: left; }
+button.pequeno { padding: 0.15rem 0.6rem; font-size: 0.85rem; width: auto; }
+form.em-linha { display: inline; margin: 0; }
+form.em-linha button { padding: 0.15rem 0.6rem; width: auto; margin: 0 0 0 0.5rem; }
+details.adicionar { margin-bottom: 1.5rem; }
+.sucesso-caixa { border-left: 4px solid var(--pico-ins-color); }
+.lote .item { padding: 0.35rem 0; border-bottom: 1px solid var(--pico-muted-border-color); }
+.lote .item label { margin: 0; }
+.lote .item details { margin: 0.25rem 0 0 1.75rem; }

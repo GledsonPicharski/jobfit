@@ -139,7 +139,7 @@ def _com_proposto(pasta_dados) -> None:
 def test_fato_proposto_mostra_confirmar_e_rejeitar(cliente, ana_com_dossie, pasta_dados):
     _com_proposto(pasta_dados)
     tela = cliente.get("/p/ana/dossie").text
-    assert "1 fato(s) proposto(s) aguardando sua confirmação" in tela
+    assert "1 fato(s) para confirmar." in tela
     assert 'href="#F-010"' in tela
     assert tela.count('action="/p/ana/dossie/fatos/F-010/status"') == 2
     assert 'action="/p/ana/dossie/fatos/F-001/status"' not in tela
@@ -171,3 +171,53 @@ def test_status_invalido_ou_fato_inexistente(cliente, ana_com_dossie, pasta_dado
     resposta = cliente.post("/p/ana/dossie/fatos/F-999/status", data={"status": "confirmado"})
     assert resposta.status_code == 404
     assert _arquivo(pasta_dados) == EXEMPLO
+
+
+# --- adicionar e remover à mão ------------------------------------------------
+
+
+def _fatos(pasta_dados):
+    return ler_dossie(caminho_dossie(pasta_dados, "ana").read_text(encoding="utf-8")).fatos
+
+
+def test_cada_secao_sugere_o_tipo_ao_adicionar(cliente, ana_com_dossie):
+    tela = cliente.get("/p/ana/dossie").text
+    assert tela.count("+ Adicionar") >= 5
+    assert '<option value="idioma" selected>' in tela
+    assert 'name="empresa" value="Empresa Exemplo"' in tela  # subseção da empresa
+
+
+def test_adicionar_fato_entra_direto_com_origem_manual(cliente, ana_com_dossie, pasta_dados):
+    resposta = cliente.post(
+        "/p/ana/dossie/fatos",
+        data={
+            "tipo": "resultado",
+            "texto": "Criou o painel de vendas — ação contínua.",
+            "empresa": "Empresa Exemplo",
+            "inicio": "2024-01",
+        },
+        follow_redirects=False,
+    )
+    assert resposta.status_code == 303
+    novo = next(f for f in _fatos(pasta_dados) if f.texto.startswith("Criou o painel"))
+    assert resposta.headers["location"] == f"/p/ana/dossie#{novo.id}"
+    assert novo.origem.startswith("manual ")
+    assert novo.status == "confirmado"
+    assert versoes(banco_do_perfil("ana"))[0].motivo == "edicao_app"
+
+
+def test_adicionar_invalido_mostra_o_erro_e_nao_grava(cliente, ana_com_dossie, pasta_dados):
+    antes = _fatos(pasta_dados)
+    resposta = cliente.post(
+        "/p/ana/dossie/fatos", data={"tipo": "resultado", "texto": "x", "inicio": "ontem"}
+    )
+    assert resposta.status_code == 400
+    assert "Não deu para adicionar" in resposta.text
+    assert _fatos(pasta_dados) == antes
+
+
+def test_remover_fato(cliente, ana_com_dossie, pasta_dados):
+    resposta = cliente.post("/p/ana/dossie/fatos/F-010/remover", follow_redirects=False)
+    assert resposta.status_code == 303
+    assert "F-010" not in [f.id for f in _fatos(pasta_dados)]
+    assert cliente.post("/p/ana/dossie/fatos/F-999/remover").status_code == 404

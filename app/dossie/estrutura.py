@@ -202,12 +202,30 @@ class SecaoTela:
     nivel: int
     titulo: str
     fatos: list[Fato] = field(default_factory=list)
+    tipo: TipoFato | None = None  # o que "Adicionar" propõe nesta seção
+    empresa: str | None = None  # numa subseção de Experiências
+
+
+def _chave_do_titulo(titulo: str) -> str | None:
+    texto = _normalizar(titulo)
+    return next((c for c, palavras in _PALAVRAS.items() if any(p in texto for p in palavras)), None)
+
+
+def _sugestao(nivel: int, titulo: str, chave_pai: str | None) -> tuple[TipoFato | None, str | None]:
+    if nivel == 3 and chave_pai == "experiencias":
+        empresa = re.split(r" — | – | - | · | \(", titulo, maxsplit=1)[0].strip()
+        return "resultado", empresa or None
+    chave = _chave_do_titulo(titulo) if nivel == 2 else None
+    if chave is None:
+        return None, None
+    return next(t for t, c in _SECAO_DO_TIPO.items() if c == chave), None
 
 
 def secoes_para_tela(doc: Documento) -> list[SecaoTela]:
     """Títulos e os fatos sob cada um, na ordem do arquivo (sem a narrativa)."""
     secoes: list[SecaoTela] = []
     cerca: str | None = None
+    chave_pai: str | None = None
     for parte in doc.partes:
         if isinstance(parte, BlocoFatos):
             if not secoes:
@@ -221,5 +239,9 @@ def secoes_para_tela(doc: Documento) -> list[SecaoTela]:
                 elif set(linha.strip()) == {cerca[0]}:
                     cerca = None
             elif cerca is None and (m := _TITULO.match(linha)) and len(m.group(1)) > 1:
-                secoes.append(SecaoTela(len(m.group(1)), m.group(2)))
+                nivel, titulo = len(m.group(1)), m.group(2)
+                if nivel == 2:
+                    chave_pai = _chave_do_titulo(titulo)
+                tipo, empresa = _sugestao(nivel, titulo, chave_pai)
+                secoes.append(SecaoTela(nivel, titulo, tipo=tipo, empresa=empresa))
     return secoes

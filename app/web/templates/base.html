@@ -12,15 +12,30 @@
 <body>
   <header class="container">
     <nav>
-      <ul><li><a href="/"><strong>JobFit</strong></a></li></ul>
+      <ul>
+        <li><a href="{% if perfil %}/p/{{ perfil.slug }}{% else %}/{% endif %}"><strong>JobFit</strong></a></li>
+        {% if perfil %}
+        <li><a href="/p/{{ perfil.slug }}">Início</a></li>
+        <li><a href="/p/{{ perfil.slug }}/dossie">Dossiê</a></li>
+        {% endif %}
+      </ul>
       <ul>
         {% if perfil %}
-        <li><a href="/p/{{ perfil.slug }}">{{ perfil.nome }}</a></li>
-        <li><a href="/p/{{ perfil.slug }}/dossie">Dossiê</a></li>
-        <li><a href="/p/{{ perfil.slug }}/importar">Importar</a></li>
-        <li><a href="/p/{{ perfil.slug }}/ia">IA</a></li>
+        <li>
+          <details class="dropdown menu-perfil">
+            <summary>{{ perfil.nome }}</summary>
+            <ul dir="rtl">
+              <li><a href="/p/{{ perfil.slug }}/ia">Configurar IA</a></li>
+              <li><a href="/p/{{ perfil.slug }}/custos">Custos e chamadas</a></li>
+              <li><a href="/perfis">Trocar de perfil</a></li>
+              <li><a href="/perfis/novo">Novo perfil</a></li>
+              <li><a href="/p/{{ perfil.slug }}/excluir" class="texto-perigo">Excluir perfil</a></li>
+            </ul>
+          </details>
+        </li>
+        {% else %}
+        <li><a href="/perfis" class="secondary">Perfis</a></li>
         {% endif %}
-        <li><a href="/" class="secondary">Perfis</a></li>
       </ul>
     </nav>
   </header>

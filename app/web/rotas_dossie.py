@@ -2,14 +2,16 @@
 
 import json
 from collections.abc import Callable
+from datetime import date
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse
+from pydantic import ValidationError
 
 from app.arquivos import ler_texto
 from app.db import banco_do_perfil
-from app.dossie.estrutura import secoes_para_tela
+from app.dossie.estrutura import inserir_fatos, proximo_id, secoes_para_tela
 from app.dossie.filtros import fatos_publicaveis
 from app.dossie.formato import Documento, ErroDossie
 from app.dossie.modelos import ROTULOS_TIPO, Fato
@@ -21,9 +23,12 @@ from app.dossie.versoes import (
     carregar_dossie,
     diff_texto,
     obter_versao,
+    restaurar_versao,
     versoes,
 )
+from app.ingestao.arquivos import LIMITE_TEXTO
 from app.perfis.modelos import Perfil
+from app.validacao import descrever_erro
 from app.web.formatos import formatar_periodo
 from app.web.rotas import Pasta, PerfilAtual, ir, templates
 
@@ -34,6 +39,8 @@ templates.env.globals["MOTIVOS_VERSAO"] = {
     "edicao_manual": "edição manual",
     "edicao_app": "edição no app",
     "importacao": "importação",
+    "adocao": "dossiê enviado",
+    "restauracao": "volta a uma versão anterior",
 }
 
 router = APIRouter()
@@ -48,8 +55,15 @@ def _tela_quebrada(request: Request, pasta, perfil: Perfil, erro: ErroDossie, st
     )
 
 
-@router.get("/p/{slug}/dossie", response_class=HTMLResponse)
-def ver_dossie(request: Request, pasta: Pasta, perfil: PerfilAtual, visao: str = ""):
+def _tela_dossie(
+    request: Request,
+    pasta,
+    perfil: Perfil,
+    visao: str = "",
+    erro_form: str = "",
+    status=200,
+    gravado: int | None = None,
+):
     engine = banco_do_perfil(perfil.slug)
     try:
         doc = carregar_dossie(pasta, engine, perfil)
@@ -71,8 +85,96 @@ def ver_dossie(request: Request, pasta: Pasta, perfil: PerfilAtual, visao: str =
             "arquivo": caminho_dossie(pasta, perfil.slug),
             "importacoes": importacoes_em_revisao(engine),
             "propostos": [f for f in doc.fatos if f.status == "proposto"],
+            "erro_form": erro_form,
+            "gravado": obter_versao(engine, gravado) if gravado else None,
+            "anterior": _anterior(engine, gravado) if gravado else None,
+            "TIPOS": ROTULOS_TIPO,
+            "limite": LIMITE_TEXTO,
         },
+        status_code=status,
     )
+
+
+def _anterior(engine, numero: int) -> int | None:
+    return next((v.versao for v in versoes(engine) if v.versao < numero), None)
+
+
+@router.get("/p/{slug}/dossie", response_class=HTMLResponse)
+def ver_dossie(
+    request: Request, pasta: Pasta, perfil: PerfilAtual, visao: str = "", gravado: int = 0
+):
+    return _tela_dossie(request, pasta, perfil, visao, gravado=gravado or None)
+
+
+@router.post("/p/{slug}/dossie/historico/{numero}/restaurar", response_class=HTMLResponse)
+def restaurar(request: Request, pasta: Pasta, perfil: PerfilAtual, numero: int):
+    """Desfazer: a versão escolhida volta como versão nova."""
+    try:
+        versao = restaurar_versao(pasta, banco_do_perfil(perfil.slug), perfil, numero)
+    except KeyError as erro:
+        raise HTTPException(404, "Versão não encontrada.") from erro
+    except ErroDossie as erro:
+        return _tela_quebrada(request, pasta, perfil, erro, status=409)
+    return ir(f"/p/{perfil.slug}/dossie?gravado={versao.versao}")
+
+
+@router.post("/p/{slug}/dossie/fatos", response_class=HTMLResponse)
+def adicionar_fato(
+    request: Request,
+    pasta: Pasta,
+    perfil: PerfilAtual,
+    tipo: Annotated[str, Form()],
+    texto: Annotated[str, Form()],
+    empresa: Annotated[str, Form()] = "",
+    cargo: Annotated[str, Form()] = "",
+    inicio: Annotated[str, Form()] = "",
+    fim: Annotated[str, Form()] = "",
+):
+    """O que a própria pessoa escreve já é aprovado: entra direto, como versão nova."""
+    dados = {
+        "id": "F-000",
+        "tipo": tipo,
+        "texto": texto,
+        "empresa": empresa.strip() or None,
+        "cargo": cargo.strip() or None,
+        "periodo": {"inicio": inicio, "fim": fim or None} if inicio.strip() else None,
+        "origem": f"manual {date.today().isoformat()}",
+    }
+    try:
+        Fato.model_validate(dados)
+    except ValidationError as erro:
+        mensagem = "; ".join(descrever_erro(e) for e in erro.errors())
+        return _tela_dossie(request, pasta, perfil, erro_form=mensagem, status=400)
+
+    novo: list[str] = []
+
+    def inserir(doc: Documento) -> None:
+        fato = Fato.model_validate({**dados, "id": proximo_id(doc)})
+        inserir_fatos(doc, [fato])
+        novo.append(fato.id)
+
+    try:
+        alterar_dossie(pasta, banco_do_perfil(perfil.slug), perfil, "edicao_app", inserir)
+    except ErroDossie as erro:
+        return _tela_quebrada(request, pasta, perfil, erro, status=409)
+    return ir(f"/p/{perfil.slug}/dossie#{novo[0]}")
+
+
+@router.post("/p/{slug}/dossie/fatos/{fato_id}/remover", response_class=HTMLResponse)
+def remover_fato(request: Request, pasta: Pasta, perfil: PerfilAtual, fato_id: str):
+    """Sai do arquivo; a versão anterior guarda o fato, e o histórico mostra a remoção."""
+
+    def remover(doc: Documento) -> None:
+        try:
+            doc.remover_fato(fato_id)
+        except KeyError as erro:
+            raise HTTPException(404, "Fato não encontrado.") from erro
+
+    try:
+        alterar_dossie(pasta, banco_do_perfil(perfil.slug), perfil, "edicao_app", remover)
+    except ErroDossie as erro:
+        return _tela_quebrada(request, pasta, perfil, erro, status=409)
+    return ir(f"/p/{perfil.slug}/dossie")
 
 
 def _mudar_fato(
@@ -143,7 +245,7 @@ def ver_versao(request: Request, pasta: Pasta, perfil: PerfilAtual, numero: int)
     versao = obter_versao(engine, numero)
     if versao is None:
         raise HTTPException(404, "Versão não encontrada.")
-    anterior = next((v.versao for v in versoes(engine) if v.versao < numero), None)
+    anterior = _anterior(engine, numero)
     linhas = diff_texto(
         _texto_da_versao(pasta, perfil.slug, anterior),
         _texto_da_versao(pasta, perfil.slug, numero),

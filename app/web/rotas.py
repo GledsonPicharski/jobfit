@@ -15,6 +15,9 @@ from sqlmodel import Session, select
 
 from app import config
 from app.db import banco_do_perfil
+from app.dossie.formato import ErroDossie
+from app.dossie.propostas import importacoes_em_revisao
+from app.dossie.versoes import carregar_dossie
 from app.ia import (
     AguardandoResposta,
     ErroIA,
@@ -82,7 +85,16 @@ def _lembrar_perfil(slug: str) -> None:
 
 
 @router.get("/", response_class=HTMLResponse)
-def inicio(request: Request, pasta: Pasta, excluido: str = ""):
+def inicio(pasta: Pasta):
+    """Abre direto no último perfil usado; a lista de perfis é secundária."""
+    ultimo = config.carregar_config().ultimo_perfil
+    if ultimo and any(p.slug == ultimo for p in listar_perfis(pasta)):
+        return ir(f"/p/{ultimo}")
+    return ir("/perfis")
+
+
+@router.get("/perfis", response_class=HTMLResponse)
+def perfis(request: Request, pasta: Pasta, excluido: str = ""):
     return templates.TemplateResponse(
         request,
         "inicio.html",
@@ -135,26 +147,48 @@ def criar(
             status_code=400,
         )
     _lembrar_perfil(perfil.slug)
-    return ir(f"/p/{perfil.slug}/ia")
+    return ir(f"/p/{perfil.slug}")
 
 
 @router.get("/p/{slug}", response_class=HTMLResponse)
-def painel(request: Request, perfil: PerfilAtual):
+def inicio_do_perfil(request: Request, pasta: Pasta, perfil: PerfilAtual):
+    """O que a pessoa mais olha: o estado do dossiê e o próximo passo."""
     _lembrar_perfil(perfil.slug)
+    engine = banco_do_perfil(perfil.slug)
+    doc, erro_dossie = None, None
+    try:
+        doc = carregar_dossie(pasta, engine, perfil)
+    except ErroDossie as erro:
+        erro_dossie = erro
+    return templates.TemplateResponse(
+        request,
+        "perfil_inicio.html",
+        {
+            "perfil": perfil,
+            "doc": doc,
+            "erro_dossie": erro_dossie,
+            "propostos": [f for f in doc.fatos if f.status == "proposto"] if doc else [],
+            "importacoes": importacoes_em_revisao(engine),
+            "falta_chave": perfil.ia.precisa_chave
+            and not tem_chave(perfil.slug, perfil.ia.provedor),
+            "pendentes": pedidos_pendentes(engine),
+        },
+    )
+
+
+@router.get("/p/{slug}/custos", response_class=HTMLResponse)
+def custos(request: Request, perfil: PerfilAtual):
     engine = banco_do_perfil(perfil.slug)
     with Session(engine) as sessao:
         recentes = sessao.exec(select(ChamadaIA).order_by(ChamadaIA.id.desc()).limit(10)).all()
     return templates.TemplateResponse(
         request,
-        "painel.html",
+        "custos.html",
         {
             "perfil": perfil,
             "gasto_dia": gasto_do_dia(engine),
             "gasto_mes": gasto_do_mes(engine),
             "teto_micro": para_micro_usd(perfil.ia.teto_diario_usd),
-            "falta_chave": perfil.ia.precisa_chave
-            and not tem_chave(perfil.slug, perfil.ia.provedor),
-            "pendentes": pedidos_pendentes(engine),
             "recentes": recentes,
         },
     )
@@ -258,7 +292,7 @@ def excluir(
         return templates.TemplateResponse(
             request, "perfil_excluir.html", {**contexto, "erro": str(erro)}, status_code=400
         )
-    return ir(f"/?{urlencode({'excluido': perfil.nome})}")
+    return ir(f"/perfis?{urlencode({'excluido': perfil.nome})}")
 
 
 # --- pedidos do modo manual ---------------------------------------------------
