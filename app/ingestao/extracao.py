@@ -10,24 +10,14 @@ aparecer no texto. O que falhar vira alerta, e a proposta começa rejeitada.
 
 import re
 
-from app.dossie.modelos import sem_acento
 from app.dossie.propostas import Candidato
 from app.ia.tarefas import FatoExtraido, FatosExtraidos
+from app.textos import contem
 
 _CPF = re.compile(r"(?<![\w.])\d{3}\.?\d{3}\.?\d{3}-?\d{2}(?!\w)")
 _EMAIL = re.compile(r"(?<![\w.+-])[\w.+-]+@(?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,}")
 _TELEFONE = re.compile(r"(?<![\w+])(?:\+55\s?)?\(?\d{2}\)?\s?9?\d{4}[-\s]?\d{4}(?!\w)")
 _NUMERO = re.compile(r"\d+(?:[.,]\d+)*%?")
-
-
-def _palavras(texto: str) -> str:
-    return " ".join(re.findall(r"[a-z0-9]+", sem_acento(texto).casefold()))
-
-
-def _contem(todo: str, parte: str) -> bool:
-    """`parte` aparece em `todo` como sequência de palavras inteiras."""
-    parte = _palavras(parte)
-    return bool(parte) and f" {parte} " in f" {_palavras(todo)} "
 
 
 def _digitos(numero: str) -> str:
@@ -64,7 +54,7 @@ def mascarar(texto: str, fonte: str) -> tuple[str, list[Candidato]]:
 
 def checar(fato: FatoExtraido, fonte: str) -> list[str]:
     alertas = []
-    if not _contem(fonte, fato.trecho):
+    if not contem(fonte, fato.trecho):
         alertas.append("O trecho de origem não está no texto importado.")
 
     no_trecho = {_digitos(n) for n in _NUMERO.findall(fato.trecho)}
@@ -76,14 +66,14 @@ def checar(fato: FatoExtraido, fonte: str) -> list[str]:
     if sem_origem:
         alertas.append(f"Número sem origem no trecho: {', '.join(sem_origem)}.")
 
-    if fato.empresa and not _contem(fonte, fato.empresa):
+    if fato.empresa and not contem(fonte, fato.empresa):
         alertas.append(f"Empresa não aparece no texto: {fato.empresa}.")
-    if fato.cargo and not _contem(fonte, fato.cargo):
+    if fato.cargo and not contem(fonte, fato.cargo):
         alertas.append(f"Cargo não aparece no texto: {fato.cargo}.")
     if fato.periodo:
         anos = [d[:4] for d in (fato.periodo.inicio, fato.periodo.fim) if d]
         for ano in dict.fromkeys(anos):
-            if not _contem(fonte, ano):
+            if not contem(fonte, ano):
                 alertas.append(f"Ano sem origem no texto: {ano}.")
     return alertas
 

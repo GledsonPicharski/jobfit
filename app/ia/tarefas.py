@@ -50,7 +50,53 @@ class FatosExtraidos(BaseModel):
 
 EXTRAIR_FATOS = Tarefa(nome="extrair_fatos", versao=1, nivel="barato", saida=FatosExtraidos)
 
-TAREFAS: dict[str, Tarefa] = {t.nome: t for t in [TESTAR_CONEXAO, EXTRAIR_FATOS]}
+
+class FatoParaAvaliar(BaseModel):
+    id: str
+    tipo: str
+    texto: str
+    empresa: str | None = None
+    periodo: str | None = None
+
+
+class EntradaAvaliacao(BaseModel):
+    """A vaga vai como campo JSON: é dado não confiável (regra 8). Sem critérios privados."""
+
+    vaga: str
+    fatos: list[FatoParaAvaliar]
+
+
+Categoria = Literal[
+    "experiencia",
+    "competencia",
+    "ferramenta",
+    "formacao",
+    "idioma",
+    "certificacao",
+    "comportamental",
+    "outro",
+]
+
+
+class RequisitoAvaliado(BaseModel):
+    texto: str = Field(min_length=1, max_length=300)
+    peso: Literal["obrigatorio", "desejavel"]
+    categoria: Categoria = "outro"
+    trecho: str = Field(min_length=1, max_length=800)
+    decisao: Literal["atende", "parcial", "nao_sei", "nao_atende"]
+    fatos: list[str] = Field(default_factory=list, max_length=12)
+    justificativa: str = Field(default="", max_length=400)
+
+
+class AvaliacaoVaga(BaseModel):
+    titulo: str | None = Field(default=None, max_length=200)
+    empresa: str | None = Field(default=None, max_length=200)
+    requisitos: list[RequisitoAvaliado] = Field(default_factory=list, max_length=40)
+
+
+AVALIAR_VAGA = Tarefa(nome="avaliar_vaga", versao=1, nivel="forte", saida=AvaliacaoVaga)
+
+TAREFAS: dict[str, Tarefa] = {t.nome: t for t in [TESTAR_CONEXAO, EXTRAIR_FATOS, AVALIAR_VAGA]}
 
 
 def texto_da_entrada(entrada: str | BaseModel) -> str:

@@ -1,0 +1,26 @@
+# Como a nota de compatibilidade é calculada (regra 10: em código, a partir dos julgamentos da IA).
+# Mudou algo aqui? Rode `jobfit eval` e compare a concordância antes de abrir o PR.
+
+# Quanto cada requisito pesa na soma.
+pesos:
+  obrigatorio: 2
+  desejavel: 1
+
+# Quanto vale cada decisão da IA (0 a 1).
+valores:
+  atende: 1
+  parcial: 0.5
+  nao_sei: 0.25
+  nao_atende: 0
+
+# Nota mínima de cada faixa; abaixo de C é D.
+faixas:
+  A: 85
+  B: 70
+  C: 55
+
+# Abaixo do corte, o app recomenda não se candidatar (a pessoa pode seguir mesmo assim).
+corte: 60
+
+# Com um requisito obrigatório não atendido, a nota não passa deste valor.
+teto_obrigatorio_faltando: 69
