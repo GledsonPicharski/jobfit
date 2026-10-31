@@ -166,7 +166,7 @@ class Salario:
 _MOEDA = r"(R\$|US\$|USD|\$)"
 _VALOR = r"(\d[\d.,]*)\s*(k|mil)?"
 _SALARIO = re.compile(
-    rf"{_MOEDA}\s*{_VALOR}(?:\s*(?:-|–|a|ate|to)\s*{_MOEDA}?\s*{_VALOR})?", re.IGNORECASE
+    rf"{_MOEDA}\s*{_VALOR}(?:\s*(?:-|–|—|a|at[ée]|to)\s*{_MOEDA}?\s*{_VALOR})?", re.IGNORECASE
 )
 _ANUAL = re.compile(r"(por ano|/\s*ano|anual|per year|/\s*year|annual|a year|yearly)")
 
@@ -182,15 +182,16 @@ def _numero(texto: str, moeda: str, multiplicador: str | None) -> Decimal | None
 
 
 def ler_salario(texto: str) -> Salario | None:
-    for m in _SALARIO.finditer(sem_acento(texto)):
+    for m in _SALARIO.finditer(texto):
         simbolo, valor1, mult1, _, valor2, mult2 = m.groups()
         moeda = "BRL" if simbolo.upper() == "R$" else "USD"
         minimo = _numero(valor1, moeda, mult1 or mult2)
         maximo = _numero(valor2, moeda, mult2) if valor2 else minimo
         if minimo is None or maximo is None or minimo < 100:
             continue
-        depois = _normal(texto[m.end() : m.end() + 40])
-        if _ANUAL.search(depois):
+        # "Annual Salary: <valor>" ou "<valor> por ano": o período vem antes ou depois.
+        em_volta = _normal(texto[max(0, m.start() - 40) : m.end() + 40])
+        if _ANUAL.search(em_volta):
             minimo, maximo = minimo / 12, maximo / 12
         return Salario(moeda, minimo.quantize(Decimal(1)), maximo.quantize(Decimal(1)))
     return None

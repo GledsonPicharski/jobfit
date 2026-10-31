@@ -122,6 +122,11 @@ def test_sem_ingles_no_dossie():
             "Base salary: $120,000 - $150,000 per year",
             Salario("USD", Decimal(10000), Decimal(12500)),
         ),
+        (
+            "Annual Salary:\n$190,000—$230,000 USD",
+            Salario("USD", Decimal(15833), Decimal(19167)),
+        ),
+        (f"Remuneração anual: {RS} 240.000", Salario("BRL", Decimal(20000), Decimal(20000))),
         ("Salário compatível com o mercado.", None),
     ],
 )
