@@ -10,6 +10,7 @@ from pydantic import ValidationError
 
 from app.db import banco_do_perfil
 from app.dossie.formato import ErroDossie
+from app.dossie.modelos import ROTULOS_TIPO
 from app.dossie.versoes import carregar_dossie
 from app.ia import ErroIA
 from app.perfis.modelos import Criterios, Perfil
@@ -106,6 +107,7 @@ def _tela_vagas(request: Request, perfil: Perfil, erro: str = "", entrada: str =
         {
             "perfil": perfil,
             "vagas": servico.listar_vagas(engine),
+            "lacunas": servico.lacunas_recorrentes(engine),
             "erro": erro,
             "entrada": entrada,
         },
@@ -187,6 +189,8 @@ def _tela_vaga(
             avaliacao and versao_atual and avaliacao.versao_dossie != versao_atual
         ),
         "chamada": servico.custo_da_avaliacao(engine, avaliacao) if avaliacao else None,
+        "TIPOS": ROTULOS_TIPO,
+        "TIPO_DA_CATEGORIA": servico.TIPO_DA_CATEGORIA,
         "erro": erro,
         **extra,
     }
@@ -195,9 +199,15 @@ def _tela_vaga(
 
 @router.get("/p/{slug}/vagas/{vaga_id}", response_class=HTMLResponse)
 def ver_vaga(
-    request: Request, pasta: Pasta, perfil: PerfilAtual, vaga_id: int, repetida: bool = False
+    request: Request,
+    pasta: Pasta,
+    perfil: PerfilAtual,
+    vaga_id: int,
+    repetida: bool = False,
+    adicionado: str = "",
 ):
-    return _tela_vaga(request, pasta, perfil, _vaga(perfil, vaga_id), repetida=repetida)
+    vaga = _vaga(perfil, vaga_id)
+    return _tela_vaga(request, pasta, perfil, vaga, repetida=repetida, adicionado=adicionado)
 
 
 @router.post("/p/{slug}/vagas/{vaga_id}/estado")
@@ -209,3 +219,70 @@ def mudar_estado(
     _vaga(perfil, vaga_id)
     servico.atualizar_vaga(banco_do_perfil(perfil.slug), vaga_id, estado=estado)
     return ir(f"/p/{perfil.slug}/vagas/{vaga_id}")
+
+
+# --- feedback por requisito (decisão 0005: o que a pessoa afirma entra direto) ----------
+
+
+def _avaliacao_atual(perfil: Perfil, vaga_id: int):
+    _vaga(perfil, vaga_id)
+    avaliacao = servico.ultima_avaliacao(banco_do_perfil(perfil.slug), vaga_id)
+    if avaliacao is None or avaliacao.bloqueada:
+        raise HTTPException(404, "Esta vaga ainda não tem avaliação.")
+    return avaliacao
+
+
+def _ir_requisito(perfil: Perfil, vaga_id: int, posicao: int, consulta: str = ""):
+    return ir(f"/p/{perfil.slug}/vagas/{vaga_id}{consulta}#requisito-{posicao}")
+
+
+@router.post("/p/{slug}/vagas/{vaga_id}/requisitos/{posicao}/tenho", response_class=HTMLResponse)
+def tenho_isso(
+    request: Request,
+    pasta: Pasta,
+    perfil: PerfilAtual,
+    vaga_id: int,
+    posicao: int,
+    texto: Annotated[str, Form()],
+    tipo: Annotated[str, Form()],
+    empresa: Annotated[str, Form()] = "",
+):
+    avaliacao = _avaliacao_atual(perfil, vaga_id)
+    engine = banco_do_perfil(perfil.slug)
+    try:
+        fato_id = servico.tenho_isso(
+            pasta, engine, perfil, avaliacao.id, posicao, texto, tipo, empresa
+        )
+    except servico.ErroVaga as erro:
+        vaga = _vaga(perfil, vaga_id)
+        return _tela_vaga(request, pasta, perfil, vaga, f"Não deu para registrar: {erro}", 400)
+    except ErroDossie as erro:
+        vaga = _vaga(perfil, vaga_id)
+        return _tela_vaga(request, pasta, perfil, vaga, f"O dossiê tem um erro. {erro}", 409)
+    return _ir_requisito(perfil, vaga_id, posicao, f"?adicionado={fato_id}")
+
+
+@router.post("/p/{slug}/vagas/{vaga_id}/requisitos/{posicao}/ajuste")
+def ajustar(
+    perfil: PerfilAtual,
+    vaga_id: int,
+    posicao: int,
+    acao: Annotated[Literal["nao_tenho", "nao_se_aplica", "nao_e_bem_assim"], Form()],
+):
+    avaliacao = _avaliacao_atual(perfil, vaga_id)
+    try:
+        servico.ajustar(banco_do_perfil(perfil.slug), avaliacao.id, posicao, acao)
+    except servico.ErroVaga as erro:
+        raise HTTPException(404, str(erro)) from erro
+    return _ir_requisito(perfil, vaga_id, posicao)
+
+
+@router.post("/p/{slug}/vagas/{vaga_id}/requisitos/{posicao}/desfazer", response_class=HTMLResponse)
+def desfazer(request: Request, pasta: Pasta, perfil: PerfilAtual, vaga_id: int, posicao: int):
+    avaliacao = _avaliacao_atual(perfil, vaga_id)
+    try:
+        servico.desfazer(pasta, banco_do_perfil(perfil.slug), perfil, avaliacao.id, posicao)
+    except ErroDossie as erro:
+        vaga = _vaga(perfil, vaga_id)
+        return _tela_vaga(request, pasta, perfil, vaga, f"O dossiê tem um erro. {erro}", 409)
+    return _ir_requisito(perfil, vaga_id, posicao)

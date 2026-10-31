@@ -1,16 +1,22 @@
 """Vagas no banco do perfil: registrar, filtrar, avaliar, ajustar e recalcular a nota."""
 
+import contextlib
 import hashlib
 import json
 from dataclasses import asdict
+from datetime import date
 from decimal import Decimal
+from pathlib import Path
 
+from pydantic import ValidationError
 from sqlalchemy import Engine
 from sqlmodel import Session, select
 
+from app.dossie.estrutura import inserir_fatos, proximo_id
 from app.dossie.filtros import fatos_para_ia
 from app.dossie.formato import Documento
 from app.dossie.modelos import Fato
+from app.dossie.versoes import alterar_dossie
 from app.ia import executar_detalhado
 from app.ia.modelos import ChamadaIA
 from app.ia.tarefas import AVALIAR_VAGA, EntradaAvaliacao, FatoParaAvaliar
@@ -22,6 +28,7 @@ from app.vagas.leitura import VagaBruta
 from app.vagas.metadados import Metadados, Salario, extrair_metadados, nivel_ingles_declarado
 from app.vagas.nota import Item, calcular_nota, carregar_config
 from app.vagas.tabelas import Ajuste, Avaliacao, Vaga
+from app.validacao import descrever_erro
 
 ESTADOS = {"avaliada": "Avaliada", "quero_aplicar": "Quero aplicar", "descartada": "Descartada"}
 FAIXAS = ("A", "B", "C", "D")
@@ -260,3 +267,119 @@ def listar_vagas(engine: Engine) -> list[tuple[Vaga, Avaliacao | None]]:
     with Session(engine, expire_on_commit=False) as sessao:
         vagas = list(sessao.exec(select(Vaga).order_by(Vaga.criado_em.desc(), Vaga.id.desc())))
     return [(v, ultima_avaliacao(engine, v.id)) for v in vagas]
+
+
+# --- feedback que volta para o dossiê (decisão 0005) ------------------------------
+
+# Que tipo de fato "eu tenho isso" cria, pela categoria do requisito.
+TIPO_DA_CATEGORIA = {
+    "experiencia": "resultado",
+    "competencia": "competencia",
+    "ferramenta": "ferramenta",
+    "formacao": "formacao",
+    "idioma": "idioma",
+    "certificacao": "certificacao",
+    "comportamental": "competencia",
+    "outro": "competencia",
+}
+
+
+def _avaliacao(engine: Engine, avaliacao_id: int) -> Avaliacao:
+    with Session(engine, expire_on_commit=False) as sessao:
+        avaliacao = sessao.get(Avaliacao, avaliacao_id)
+    if avaliacao is None:
+        raise ErroVaga("Avaliação não encontrada.")
+    return avaliacao
+
+
+def tenho_isso(
+    pasta_dados: Path,
+    engine: Engine,
+    perfil: Perfil,
+    avaliacao_id: int,
+    posicao: int,
+    texto: str,
+    tipo: str,
+    empresa: str | None = None,
+) -> str:
+    """A frase da pessoa vira fato no dossiê, e o requisito passa a "atende" com ele.
+
+    Sem nova chamada de IA: a nota é recalculada em código. Devolve o ID do fato.
+    """
+    avaliacao = _avaliacao(engine, avaliacao_id)
+    if not 0 <= posicao < len(json.loads(avaliacao.requisitos)):
+        raise ErroVaga("Requisito não encontrado nesta avaliação.")
+    dados = {
+        "id": "F-000",
+        "tipo": tipo,
+        "texto": texto.strip(),
+        "empresa": (empresa or "").strip() or None,
+        "origem": f"resposta_lacuna {date.today().isoformat()}",
+    }
+    try:
+        Fato.model_validate(dados)
+    except ValidationError as erro:
+        raise ErroVaga("; ".join(descrever_erro(e) for e in erro.errors())) from erro
+
+    criado: list[str] = []
+
+    def inserir(doc: Documento) -> None:
+        fato = Fato.model_validate({**dados, "id": proximo_id(doc)})
+        inserir_fatos(doc, [fato])
+        criado.append(fato.id)
+
+    versao = alterar_dossie(pasta_dados, engine, perfil, "edicao_app", inserir)
+    with Session(engine) as sessao:
+        registro = sessao.get(Avaliacao, avaliacao_id)
+        registro.versao_dossie = versao.versao  # a avaliação já conta com o fato novo
+        sessao.add(registro)
+        sessao.commit()
+    ajustar(engine, avaliacao_id, posicao, "tenho", texto.strip(), criado[0])
+    return criado[0]
+
+
+def desfazer(pasta_dados: Path, engine: Engine, perfil: Perfil, avaliacao_id: int, posicao: int):
+    """Tira o ajuste; se ele criou um fato, o fato sai do dossiê (fica no histórico)."""
+    criados = [
+        a.fato_id
+        for a in ajustes_da_avaliacao(engine, avaliacao_id)
+        if a.requisito == posicao and a.fato_id
+    ]
+    if criados:
+
+        def remover(doc: Documento) -> None:
+            for fato_id in criados:
+                with contextlib.suppress(KeyError):  # já removido à mão
+                    doc.remover_fato(fato_id)
+
+        versao = alterar_dossie(pasta_dados, engine, perfil, "edicao_app", remover)
+        with Session(engine) as sessao:
+            registro = sessao.get(Avaliacao, avaliacao_id)
+            registro.versao_dossie = versao.versao
+            sessao.add(registro)
+            sessao.commit()
+    return desfazer_ajuste(engine, avaliacao_id, posicao)
+
+
+def lacunas_recorrentes(engine: Engine) -> list[tuple[str, list[Vaga]]]:
+    """O que a pessoa disse que não tem, agrupado: o que vale estudar.
+
+    Conta só o último ajuste de cada requisito (um "não tenho" desfeito ou trocado sai).
+    """
+    with Session(engine) as sessao:
+        consulta = (
+            select(Ajuste, Avaliacao, Vaga)
+            .join(Avaliacao, Ajuste.avaliacao_id == Avaliacao.id)
+            .join(Vaga, Avaliacao.vaga_id == Vaga.id)
+            .order_by(Ajuste.id)
+        )
+        ultimos = {(a.avaliacao_id, a.requisito): (a, av, v) for a, av, v in sessao.exec(consulta)}
+    grupos: dict[str, tuple[str, dict[int, Vaga]]] = {}
+    for ajuste, avaliacao, vaga in ultimos.values():
+        requisitos = json.loads(avaliacao.requisitos)
+        if ajuste.acao != "nao_tenho" or ajuste.requisito >= len(requisitos):
+            continue
+        texto = requisitos[ajuste.requisito]["texto"]
+        grupos.setdefault(palavras(texto), (texto, {}))[1][vaga.id] = vaga
+    ordenados = sorted(grupos.values(), key=lambda g: (-len(g[1]), g[0]))
+    return [(texto, list(vagas.values())) for texto, vagas in ordenados]

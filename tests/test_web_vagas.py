@@ -7,6 +7,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.db import banco_do_perfil
+from app.dossie.formato import ler_dossie
 from app.dossie.versoes import caminho_dossie
 from app.ia.erros import ErroIA
 from app.main import create_app
@@ -175,3 +176,110 @@ def test_mudar_estado(cliente, ana_api, usar_modelo):
 def test_vaga_inexistente(cliente, ana):
     assert cliente.get("/p/ana/vagas/99").status_code == 404
     assert cliente.get("/p/ana/vagas/99/avaliar").status_code == 404
+
+
+# --- feedback por requisito ---------------------------------------------------
+
+
+def _avaliada(cliente, usar_modelo) -> Falso:
+    falso = usar_modelo(Falso(SAIDA))
+    _colar(cliente)
+    cliente.get("/p/ana/vagas/1/avaliar")
+    return falso
+
+
+def _fatos(pasta_dados):
+    return {
+        f.id: f for f in ler_dossie(caminho_dossie(pasta_dados, "ana").read_text("utf-8")).fatos
+    }
+
+
+def test_lacuna_tem_as_tres_respostas_e_forca_tem_nao_e_bem_assim(cliente, ana_api, usar_modelo):
+    _avaliada(cliente, usar_modelo)
+    tela = cliente.get("/p/ana/vagas/1").text
+    lacuna = tela[tela.index('id="requisito-2"') :]
+    assert "Eu tenho isso" in lacuna and "Não tenho" in lacuna
+    assert '<option value="ferramenta" selected>' in lacuna  # pela categoria
+    forca = tela[tela.index('id="requisito-0"') : tela.index('id="requisito-1"')]
+    assert "Não é bem assim" in forca and "Eu tenho isso" not in forca
+
+
+def test_eu_tenho_isso_vira_fato_e_sobe_a_nota_sem_chamar_a_ia(
+    cliente, ana_api, usar_modelo, pasta_dados
+):
+    falso = _avaliada(cliente, usar_modelo)
+    resposta = cliente.post(
+        "/p/ana/vagas/1/requisitos/2/tenho",
+        data={
+            "texto": "Operei clusters Kubernetes em produção — ação contínua.",
+            "tipo": "ferramenta",
+        },
+        follow_redirects=False,
+    )
+    assert resposta.status_code == 303
+    novo = next(f for f in _fatos(pasta_dados).values() if "Kubernetes" in f.texto)
+    assert resposta.headers["location"] == f"/p/ana/vagas/1?adicionado={novo.id}#requisito-2"
+    assert novo.tipo == "ferramenta"
+    assert novo.origem.startswith("resposta_lacuna ")
+
+    tela = cliente.get(f"/p/ana/vagas/1?adicionado={novo.id}").text
+    assert '<span class="faixa faixa-A">A</span> 100' in tela
+    assert "Adicionado ao dossiê como" in tela
+    assert "o dossiê mudou desde então" not in tela  # a avaliação já conta com o fato
+    assert "você disse: eu tenho isso" in tela
+    assert falso.chamadas == 1
+
+
+def test_desfazer_tira_o_fato_do_dossie(cliente, ana_api, usar_modelo, pasta_dados):
+    _avaliada(cliente, usar_modelo)
+    cliente.post(
+        "/p/ana/vagas/1/requisitos/2/tenho", data={"texto": "Uso Kubernetes.", "tipo": "ferramenta"}
+    )
+    cliente.post("/p/ana/vagas/1/requisitos/2/desfazer")
+    assert not any("Kubernetes" in f.texto for f in _fatos(pasta_dados).values())
+    assert '<span class="faixa faixa-B">B</span> 80' in cliente.get("/p/ana/vagas/1").text
+
+
+def test_nao_tenho_vai_para_as_lacunas_recorrentes(cliente, ana_api, usar_modelo):
+    _avaliada(cliente, usar_modelo)
+    cliente.post("/p/ana/vagas/1/requisitos/2/ajuste", data={"acao": "nao_tenho"})
+    lista = cliente.get("/p/ana/vagas").text
+    assert "Lacunas recorrentes" in lista
+    assert "<strong>Kubernetes</strong>" in lista
+
+    cliente.post("/p/ana/vagas/1/requisitos/2/desfazer")
+    assert "Lacunas recorrentes" not in cliente.get("/p/ana/vagas").text
+
+
+def test_nao_se_aplica_e_nao_e_bem_assim(cliente, ana_api, usar_modelo):
+    _avaliada(cliente, usar_modelo)
+    cliente.post("/p/ana/vagas/1/requisitos/2/ajuste", data={"acao": "nao_se_aplica"})
+    tela = cliente.get("/p/ana/vagas/1").text
+    assert '<span class="faixa faixa-A">A</span> 100' in tela
+    assert "<h2>Fora da nota</h2>" in tela
+
+    cliente.post("/p/ana/vagas/1/requisitos/0/ajuste", data={"acao": "nao_e_bem_assim"})
+    assert '<span class="faixa faixa-D">D</span> 50' in cliente.get("/p/ana/vagas/1").text
+
+
+def test_feedback_invalido(cliente, ana_api, usar_modelo):
+    _avaliada(cliente, usar_modelo)
+    resposta = cliente.post(
+        "/p/ana/vagas/1/requisitos/2/tenho", data={"texto": " ", "tipo": "ferramenta"}
+    )
+    assert resposta.status_code == 400
+    assert "Não deu para registrar" in resposta.text
+    assert (
+        cliente.post("/p/ana/vagas/1/requisitos/9/ajuste", data={"acao": "nao_tenho"}).status_code
+        == 404
+    )
+    assert (
+        cliente.post("/p/ana/vagas/1/requisitos/2/ajuste", data={"acao": "tenho"}).status_code
+        == 422
+    )
+
+
+def test_vaga_sem_avaliacao_nao_aceita_feedback(cliente, ana):
+    _colar(cliente)
+    resposta = cliente.post("/p/ana/vagas/1/requisitos/0/ajuste", data={"acao": "nao_tenho"})
+    assert resposta.status_code == 404

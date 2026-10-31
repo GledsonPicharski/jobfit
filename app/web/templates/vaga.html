@@ -18,6 +18,45 @@
     {% endif %}
     {% if r.alerta %}<small class="falha">⚠ {{ r.alerta }}</small>{% endif %}
     <details><summary><small>trecho da vaga</small></summary><blockquote><small>{{ r.trecho }}</small></blockquote></details>
+    {% set base = "/p/" ~ perfil.slug ~ "/vagas/" ~ vaga.id ~ "/requisitos/" ~ r.posicao %}
+    {% if r.ajuste %}
+    <form method="post" action="{{ base }}/desfazer" class="em-linha">
+      <button type="submit" class="outline secondary pequeno">Desfazer{% if r.ajuste == "tenho" %} (tira o fato do dossiê){% endif %}</button>
+    </form>
+    {% elif r.decisao in ("nao_atende", "nao_sei") %}
+    <details class="tenho">
+      <summary><small><strong>Eu tenho isso</strong></small></summary>
+      <form method="post" action="{{ base }}/tenho">
+        <textarea name="texto" rows="2" required placeholder="Conte em uma frase o que você fez ou sabe (vira um fato do seu dossiê)"></textarea>
+        <div class="grid">
+          <select name="tipo" aria-label="Tipo do fato">
+            {% for valor, rotulo in TIPOS.items() if valor not in ("contato", "lacuna", "resposta_padrao") %}
+            <option value="{{ valor }}" {% if valor == TIPO_DA_CATEGORIA.get(r.categoria) %}selected{% endif %}>{{ rotulo }}</option>
+            {% endfor %}
+          </select>
+          <input name="empresa" placeholder="Empresa (se for de um emprego)">
+        </div>
+        <button type="submit" class="pequeno">Adicionar ao dossiê</button>
+      </form>
+    </details>
+    <form method="post" action="{{ base }}/ajuste" class="em-linha">
+      <input type="hidden" name="acao" value="nao_tenho">
+      <button type="submit" class="outline secondary pequeno">Não tenho</button>
+    </form>
+    <form method="post" action="{{ base }}/ajuste" class="em-linha">
+      <input type="hidden" name="acao" value="nao_se_aplica">
+      <button type="submit" class="outline secondary pequeno">Não se aplica</button>
+    </form>
+    {% else %}
+    <form method="post" action="{{ base }}/ajuste" class="em-linha">
+      <input type="hidden" name="acao" value="nao_e_bem_assim">
+      <button type="submit" class="outline secondary pequeno">Não é bem assim</button>
+    </form>
+    <form method="post" action="{{ base }}/ajuste" class="em-linha">
+      <input type="hidden" name="acao" value="nao_se_aplica">
+      <button type="submit" class="outline secondary pequeno">Não se aplica</button>
+    </form>
+    {% endif %}
   </div>
 </li>
 {% endmacro %}
@@ -32,6 +71,9 @@
   {% if vaga.url %}<a href="{{ vaga.url }}" target="_blank" rel="noopener noreferrer">abrir a vaga</a>{% else %}texto colado{% endif %}
 </p>
 
+{% if adicionado %}<article class="aviso sucesso-caixa">Adicionado ao dossiê como
+  <a href="/p/{{ perfil.slug }}/dossie#{{ adicionado }}">{{ adicionado }}</a>, e a nota foi recalculada,
+  sem nova chamada de IA. Para tirar, use "Desfazer" no requisito.</article>{% endif %}
 {% if repetida %}<article class="aviso">Você já tinha trazido esta vaga; esta é a avaliação que existe.</article>{% endif %}
 {% if erro %}<article class="aviso falha"><p>{{ erro }}</p>
   <a href="/p/{{ perfil.slug }}/vagas/{{ vaga.id }}/avaliar" role="button" class="secondary">Tentar de novo</a></article>{% endif %}

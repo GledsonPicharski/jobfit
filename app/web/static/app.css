@@ -59,3 +59,4 @@ li.requisito small { display: block; }
 li.decisao-atende { border-left-color: #2e7d32 !important; } li.decisao-parcial { border-left-color: #9e9d24 !important; }
 li.decisao-nao_atende { border-left-color: #c62828 !important; } li.decisao-nao_sei { border-left-color: #ef6c00 !important; }
 pre.texto-vaga { white-space: pre-wrap; font-family: inherit; }
+details.tenho { margin: 0.25rem 0; }

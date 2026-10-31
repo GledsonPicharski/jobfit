@@ -39,4 +39,15 @@
 {% else %}
 <p>Nenhuma vaga ainda. Cole o link ou o texto de uma vaga acima.</p>
 {% endif %}
+
+{% if lacunas %}
+<h2>Lacunas recorrentes</h2>
+<p><small>O que você disse que não tem, nas vagas avaliadas: o que mais aparece é o que mais vale estudar.</small></p>
+<ul>
+  {% for texto, vagas_da_lacuna in lacunas %}
+  <li><strong>{{ texto }}</strong> <small>· {{ vagas_da_lacuna | length }} vaga(s):
+    {% for v in vagas_da_lacuna %}<a href="/p/{{ perfil.slug }}/vagas/{{ v.id }}">{{ v.titulo or "vaga" }}</a>{% if not loop.last %}, {% endif %}{% endfor %}</small></li>
+  {% endfor %}
+</ul>
+{% endif %}
 {% endblock %}
