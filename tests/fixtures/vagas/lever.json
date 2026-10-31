@@ -1,0 +1,12 @@
+{
+  "id": "a1b2c3d4-0000-4000-8000-000000000001",
+  "text": "Analytics Manager",
+  "categories": {"location": "Curitiba, PR", "commitment": "Full-time", "team": "Data"},
+  "workplaceType": "hybrid",
+  "descriptionPlain": "Lideramos o time de analytics de uma fintech em crescimento.\n",
+  "lists": [
+    {"text": "Requisitos", "content": "<li>Experiência liderando times de dados</li><li>SQL avançado</li>"},
+    {"text": "Diferenciais", "content": "<li>Inglês avançado</li>"}
+  ],
+  "additionalPlain": "Modelo híbrido: 2 dias por semana no escritório.\n"
+}
