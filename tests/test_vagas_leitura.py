@@ -162,3 +162,41 @@ def test_normalizar_url(url, normal):
 def test_json_das_fixtures_e_valido():
     for nome in ("greenhouse.json", "lever.json"):
         json.loads(_fixture(nome))
+
+
+def _redirecionando(destinos: dict[str, str], final: tuple[int, str]):
+    pedidas: list[str] = []
+
+    def responder(pedido: httpx2.Request) -> httpx2.Response:
+        url = str(pedido.url)
+        pedidas.append(url)
+        if url in destinos:
+            return httpx2.Response(302, headers={"location": destinos[url]})
+        return httpx2.Response(*final[:1], text=final[1])
+
+    return httpx2.Client(transport=httpx2.MockTransport(responder)), pedidas
+
+
+def test_segue_redirecionamento_para_a_vaga():
+    destinos = {"https://encurta.test/x": "https://carreiras.exemplo.test/vagas/ml-senior"}
+    cliente, pedidas = _redirecionando(destinos, (200, _fixture("pagina.html")))
+    vaga = ler_url("https://encurta.test/x", cliente)
+    assert "Docker e Kubernetes" in vaga.texto
+    assert pedidas == ["https://encurta.test/x", "https://carreiras.exemplo.test/vagas/ml-senior"]
+
+
+@pytest.mark.parametrize(
+    "destino", ["http://127.0.0.1:8765/p/ana/vagas/1/avaliar", "https://www.linkedin.com/jobs/1"]
+)
+def test_redirecionamento_para_endereco_local_ou_linkedin_e_barrado(destino):
+    cliente, pedidas = _redirecionando({"https://encurta.test/x": destino}, (200, "nunca"))
+    with pytest.raises(ErroLeituraVaga):
+        ler_url("https://encurta.test/x", cliente)
+    assert pedidas == ["https://encurta.test/x"]
+
+
+def test_redirecionamento_sem_fim():
+    destinos = {"https://a.test/1": "https://a.test/2", "https://a.test/2": "https://a.test/1"}
+    cliente, _ = _redirecionando(destinos, (200, ""))
+    with pytest.raises(ErroLeituraVaga, match="redireciona demais"):
+        ler_url("https://a.test/1", cliente)

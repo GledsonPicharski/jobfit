@@ -12,7 +12,7 @@ import json
 import re
 from dataclasses import dataclass, field
 from typing import Any
-from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+from urllib.parse import parse_qsl, urlencode, urljoin, urlsplit, urlunsplit
 
 import httpx2
 
@@ -102,8 +102,15 @@ def _validar(url: str) -> str:
 
 
 def _buscar(cliente: httpx2.Client, url: str) -> httpx2.Response:
+    """Segue até 5 redirecionamentos, validando cada destino (nada de endereço local)."""
     try:
-        resposta = cliente.get(url)
+        for _ in range(6):
+            resposta = cliente.get(url, follow_redirects=False)
+            if not resposta.is_redirect:
+                break
+            url = _validar(urljoin(url, resposta.headers.get("location", "")))
+        else:
+            raise ErroLeituraVaga("A página redireciona demais. Cole o texto da vaga.")
     except httpx2.HTTPError as erro:
         raise ErroLeituraVaga(
             "Não consegui abrir a página. Confira a internet ou cole o texto da vaga."
@@ -203,7 +210,7 @@ def _pagina(cliente: httpx2.Client, url: str) -> VagaBruta:
 
 
 def novo_cliente() -> httpx2.Client:
-    return httpx2.Client(timeout=15, follow_redirects=True, headers={"User-Agent": USER_AGENT})
+    return httpx2.Client(timeout=15, headers={"User-Agent": USER_AGENT})
 
 
 def ler_url(url: str, cliente: httpx2.Client | None = None) -> VagaBruta:
