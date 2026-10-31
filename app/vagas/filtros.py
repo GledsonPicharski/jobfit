@@ -5,11 +5,10 @@ palavra evitada. Só alertam: senioridade e nível de inglês. Dado ausente nunc
 O salário mínimo da pessoa não aparece em nenhuma mensagem: ele é privado.
 """
 
-import re
 from dataclasses import dataclass, field
 
-from app.dossie.modelos import sem_acento
 from app.perfis.modelos import Criterios
+from app.textos import contem
 from app.vagas.metadados import MODALIDADES, NIVEIS_INGLES, SENIORIDADES, Metadados
 
 
@@ -21,15 +20,6 @@ class ResultadoFiltros:
     @property
     def bloqueada(self) -> bool:
         return bool(self.bloqueios)
-
-
-def _palavras(texto: str) -> str:
-    return " ".join(re.findall(r"\w+", sem_acento(texto).casefold()))
-
-
-def _contem(todo: str, parte: str) -> bool:
-    parte = _palavras(parte)
-    return bool(parte) and f" {parte} " in f" {_palavras(todo)} "
 
 
 def _milhar(valor) -> str:
@@ -54,7 +44,7 @@ def aplicar_filtros(
         if meta.local is None:
             nome = MODALIDADES[meta.modalidade].lower()
             r.alertas.append(f"Vaga {nome} sem cidade identificada: confira o local.")
-        elif not any(_contem(meta.local, cidade) for cidade in criterios.cidades):
+        elif not any(contem(meta.local, cidade) for cidade in criterios.cidades):
             r.bloqueios.append(
                 f"Vaga em {meta.local}; você aceita híbrido ou presencial só em "
                 f"{', '.join(criterios.cidades)}."
@@ -69,10 +59,10 @@ def aplicar_filtros(
 
     if meta.empresa:
         for empresa in criterios.empresas_evitar:
-            if _contem(meta.empresa, empresa):
+            if contem(meta.empresa, empresa):
                 r.bloqueios.append(f"Empresa na sua lista de evitar: {empresa}.")
     for palavra in criterios.palavras_evitar:
-        if _contem(texto, palavra):
+        if contem(texto, palavra):
             r.bloqueios.append(f"A vaga menciona algo que você evita: {palavra}.")
 
     if (
