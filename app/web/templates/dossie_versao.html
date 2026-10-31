@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block titulo %}Versão {{ versao.versao }} · {{ perfil.nome }} · JobFit{% endblock %}
+{% block conteudo %}
+<h1>Versão {{ versao.versao }}</h1>
+<p>
+  {{ MOTIVOS_VERSAO.get(versao.motivo, versao.motivo) }} · {{ versao.criado_em | hora }}
+  {% if versao.importacao_id %} · <a href="/p/{{ perfil.slug }}/importacoes/{{ versao.importacao_id }}">importação de origem</a>{% endif %}
+  · <a href="/p/{{ perfil.slug }}/dossie/historico">voltar ao histórico</a>
+</p>
+
+{% for chave, rotulo in [("adicionados", "Fatos adicionados"), ("alterados", "Fatos alterados"), ("removidos", "Fatos removidos")] %}
+{% if resumo.get(chave) %}
+<p><strong>{{ rotulo }}:</strong> {{ resumo[chave] | join(", ") }}</p>
+{% endif %}
+{% endfor %}
+
+<h2>{% if anterior %}Diferenças desde a versão {{ anterior }}{% else %}Conteúdo inicial{% endif %}</h2>
+{% if linhas %}
+<pre class="diff">{% for linha in linhas %}<span class="{% if linha.startswith('+') %}mais{% elif linha.startswith('-') %}menos{% elif linha.startswith('@@') %}marca{% endif %}">{{ linha }}</span>
+{% endfor %}</pre>
+{% else %}
+<p>Nenhuma diferença de texto.</p>
+{% endif %}
+{% endblock %}

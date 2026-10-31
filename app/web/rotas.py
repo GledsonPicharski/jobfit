@@ -15,6 +15,9 @@ from sqlmodel import Session, select
 
 from app import config
 from app.db import banco_do_perfil
+from app.dossie.formato import ErroDossie
+from app.dossie.propostas import importacoes_em_revisao
+from app.dossie.versoes import carregar_dossie
 from app.ia import (
     AguardandoResposta,
     ErroIA,
@@ -71,7 +74,7 @@ Pasta = Annotated[Path, Depends(exigir_pasta)]
 PerfilAtual = Annotated[Perfil, Depends(obter_perfil)]
 
 
-def _ir(url: str) -> RedirectResponse:
+def ir(url: str) -> RedirectResponse:
     return RedirectResponse(url, status_code=303)
 
 
@@ -82,7 +85,16 @@ def _lembrar_perfil(slug: str) -> None:
 
 
 @router.get("/", response_class=HTMLResponse)
-def inicio(request: Request, pasta: Pasta, excluido: str = ""):
+def inicio(pasta: Pasta):
+    """Abre direto no último perfil usado; a lista de perfis é secundária."""
+    ultimo = config.carregar_config().ultimo_perfil
+    if ultimo and any(p.slug == ultimo for p in listar_perfis(pasta)):
+        return ir(f"/p/{ultimo}")
+    return ir("/perfis")
+
+
+@router.get("/perfis", response_class=HTMLResponse)
+def perfis(request: Request, pasta: Pasta, excluido: str = ""):
     return templates.TemplateResponse(
         request,
         "inicio.html",
@@ -110,7 +122,7 @@ def salvar_pasta(request: Request, pasta: Annotated[str, Form()]):
         )
     cfg = config.carregar_config()
     config.salvar_config(cfg.model_copy(update={"pasta_dados": caminho}))
-    return _ir("/")
+    return ir("/")
 
 
 @router.get("/perfis/novo", response_class=HTMLResponse)
@@ -135,26 +147,48 @@ def criar(
             status_code=400,
         )
     _lembrar_perfil(perfil.slug)
-    return _ir(f"/p/{perfil.slug}/ia")
+    return ir(f"/p/{perfil.slug}")
 
 
 @router.get("/p/{slug}", response_class=HTMLResponse)
-def painel(request: Request, perfil: PerfilAtual):
+def inicio_do_perfil(request: Request, pasta: Pasta, perfil: PerfilAtual):
+    """O que a pessoa mais olha: o estado do dossiê e o próximo passo."""
     _lembrar_perfil(perfil.slug)
+    engine = banco_do_perfil(perfil.slug)
+    doc, erro_dossie = None, None
+    try:
+        doc = carregar_dossie(pasta, engine, perfil)
+    except ErroDossie as erro:
+        erro_dossie = erro
+    return templates.TemplateResponse(
+        request,
+        "perfil_inicio.html",
+        {
+            "perfil": perfil,
+            "doc": doc,
+            "erro_dossie": erro_dossie,
+            "propostos": [f for f in doc.fatos if f.status == "proposto"] if doc else [],
+            "importacoes": importacoes_em_revisao(engine),
+            "falta_chave": perfil.ia.precisa_chave
+            and not tem_chave(perfil.slug, perfil.ia.provedor),
+            "pendentes": pedidos_pendentes(engine),
+        },
+    )
+
+
+@router.get("/p/{slug}/custos", response_class=HTMLResponse)
+def custos(request: Request, perfil: PerfilAtual):
     engine = banco_do_perfil(perfil.slug)
     with Session(engine) as sessao:
         recentes = sessao.exec(select(ChamadaIA).order_by(ChamadaIA.id.desc()).limit(10)).all()
     return templates.TemplateResponse(
         request,
-        "painel.html",
+        "custos.html",
         {
             "perfil": perfil,
             "gasto_dia": gasto_do_dia(engine),
             "gasto_mes": gasto_do_mes(engine),
             "teto_micro": para_micro_usd(perfil.ia.teto_diario_usd),
-            "falta_chave": perfil.ia.precisa_chave
-            and not tem_chave(perfil.slug, perfil.ia.provedor),
-            "pendentes": pedidos_pendentes(engine),
             "recentes": recentes,
         },
     )
@@ -210,7 +244,7 @@ def salvar_ia(
     salvar_perfil(pasta, perfil.model_copy(update={"ia": ia}))
     if chave.strip() and provedor in PROVEDORES_COM_CHAVE:
         salvar_chave(perfil.slug, provedor, chave)
-    return _ir(f"/p/{perfil.slug}/ia?salvo=1")
+    return ir(f"/p/{perfil.slug}/ia?salvo=1")
 
 
 @router.post("/p/{slug}/ia/testar", response_class=HTMLResponse)
@@ -222,7 +256,7 @@ async def testar_conexao(request: Request, perfil: PerfilAtual):
         )
     except AguardandoResposta as aguardando:
         # Modo manual: o resultado do teste aparece na própria tela do pedido, sem "voltar".
-        return _ir(f"/p/{perfil.slug}/pedidos/{aguardando.pedido.id}")
+        return ir(f"/p/{perfil.slug}/pedidos/{aguardando.pedido.id}")
     except ErroIA as erro:
         return templates.TemplateResponse(request, "_resultado_teste.html", {"erro": erro.mensagem})
     return templates.TemplateResponse(
@@ -258,7 +292,7 @@ def excluir(
         return templates.TemplateResponse(
             request, "perfil_excluir.html", {**contexto, "erro": str(erro)}, status_code=400
         )
-    return _ir(f"/?{urlencode({'excluido': perfil.nome})}")
+    return ir(f"/perfis?{urlencode({'excluido': perfil.nome})}")
 
 
 # --- pedidos do modo manual ---------------------------------------------------
@@ -335,7 +369,7 @@ def responder(
     except PedidoIndisponivel as erro:
         return _tela_pedido(request, perfil, pedido, 400, erro=erro.mensagem)
     if destino:
-        return _ir(destino)
+        return ir(destino)
     return _tela_pedido(
         request,
         perfil,
@@ -350,4 +384,4 @@ def cancelar(perfil: PerfilAtual, pedido_id: str):
     pedido = _obter_pedido(perfil, pedido_id)
     with contextlib.suppress(PedidoIndisponivel):  # já respondido ou cancelado: nada a fazer
         cancelar_pedido(banco_do_perfil(perfil.slug), pedido.id)
-    return _ir(f"/p/{perfil.slug}")
+    return ir(f"/p/{perfil.slug}")

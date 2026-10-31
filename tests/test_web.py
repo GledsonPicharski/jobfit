@@ -60,10 +60,31 @@ def test_configurar_pasta_relativa_mostra_erro(cliente):
 def test_criar_perfil_pelo_formulario(cliente, pasta_dados):
     resposta = cliente.post("/perfis", data={"nome": "Ana Exemplo"}, follow_redirects=False)
 
-    assert resposta.headers["location"] == "/p/ana-exemplo/ia"
+    assert resposta.headers["location"] == "/p/ana-exemplo"
     assert carregar_perfil(pasta_dados, "ana-exemplo").nome == "Ana Exemplo"
     assert config.carregar_config().ultimo_perfil == "ana-exemplo"
-    assert "Ana Exemplo" in cliente.get("/").text
+    assert "Ana Exemplo" in cliente.get("/perfis").text
+
+
+def test_abrir_o_app_vai_direto_ao_ultimo_perfil(cliente, ana):
+    assert cliente.get("/", follow_redirects=False).headers["location"] == "/perfis"
+    cliente.get("/p/ana-exemplo")
+    assert cliente.get("/", follow_redirects=False).headers["location"] == "/p/ana-exemplo"
+
+
+def test_menu_do_perfil(cliente, ana):
+    tela = cliente.get("/p/ana-exemplo").text
+    menu = tela[tela.index("<nav>") : tela.index("</nav>")]
+    for link in ("/p/ana-exemplo/dossie", "/p/ana-exemplo/ia", "/p/ana-exemplo/custos", "/perfis"):
+        assert f'href="{link}"' in menu
+    assert "Custos e chamadas" in menu and "Configurar IA" in menu
+    assert '<details class="dropdown menu-perfil">' in menu  # trocar de perfil fica no nome
+
+
+def test_inicio_do_perfil_novo_leva_a_montar_o_dossie(cliente, ana):
+    tela = cliente.get("/p/ana-exemplo").text
+    assert "Montar meu dossiê" in tela
+    assert "Gasto de IA" not in tela  # custos ficam em outra página
 
 
 def test_criar_perfil_duplicado_mostra_erro(cliente, ana):
@@ -147,11 +168,11 @@ def test_testar_conexao_com_chave_errada_mostra_erro_claro(cliente, ana_api, usa
 
 
 def test_painel_mostra_gasto_do_dia(cliente, ana_api, usar_modelo):
-    assert "Nenhuma chamada de IA ainda" in cliente.get("/p/ana-exemplo").text
+    assert "Nenhuma chamada de IA ainda" in cliente.get("/p/ana-exemplo/custos").text
 
     usar_modelo(Falso())
     cliente.post("/p/ana-exemplo/ia/testar")
-    painel = cliente.get("/p/ana-exemplo").text
+    painel = cliente.get("/p/ana-exemplo/custos").text
 
     assert "Gasto de IA hoje" in painel
     assert "US$ 0,00125" in painel
@@ -228,9 +249,8 @@ def test_ciclo_manual_completo(cliente, ana):
     assert "Funcionou pelo chat." in resultado.text
     assert "US$ 0,00" in resultado.text
 
-    painel = cliente.get("/p/ana-exemplo").text
-    assert "testar_conexao v1" in painel
-    assert "aguardando resposta" not in painel
+    assert "testar_conexao v1" in cliente.get("/p/ana-exemplo/custos").text
+    assert "aguardando resposta" not in cliente.get("/p/ana-exemplo").text
 
 
 def test_testar_de_novo_reaproveita_o_pedido_pendente(cliente, ana):
@@ -346,8 +366,7 @@ def test_handler_leva_qualquer_funcionalidade_ao_pedido(ana):
 
 
 def test_tela_de_excluir_pede_confirmacao(cliente, ana):
-    assert 'href="/p/ana-exemplo/excluir"' in cliente.get("/").text
-    assert 'href="/p/ana-exemplo/excluir"' not in cliente.get("/p/ana-exemplo/ia").text
+    assert 'href="/p/ana-exemplo/excluir"' in cliente.get("/perfis").text
     tela = cliente.get("/p/ana-exemplo/excluir")
     assert tela.status_code == 200
     assert "lixeira" in tela.text

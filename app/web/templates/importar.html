@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block titulo %}Atualizar dossiê · {{ perfil.nome }} · JobFit{% endblock %}
+{% block conteudo %}
+<h1>Atualizar dossiê</h1>
+<p>Envie algo novo: o JobFit compara com o dossiê e mostra só o que muda. Você confere a lista
+  e aplica de uma vez. · <a href="/p/{{ perfil.slug }}/dossie">voltar ao dossiê</a></p>
+
+{% if erro %}
+<article class="aviso falha"><p>{{ erro }}</p></article>
+{% endif %}
+
+<div class="grid">
+  <article>
+    <h2>Arquivo</h2>
+    <form method="post" action="/p/{{ perfil.slug }}/importar/arquivo" enctype="multipart/form-data">
+      <input type="file" name="arquivo" required accept=".pdf,.docx,.md,.txt">
+      <small>PDF do LinkedIn (Recursos → Salvar como PDF), CV em PDF ou DOCX, dossiê ou texto
+        em <code>.md</code>/<code>.txt</code>, até {{ limite }}. O JobFit descobre o que é.</small>
+      <button type="submit">Enviar</button>
+    </form>
+  </article>
+  <article>
+    <h2>Texto</h2>
+    <form method="post" action="/p/{{ perfil.slug }}/importar/texto">
+      <textarea name="texto" rows="5" required placeholder="Ex.: o que você fez no último emprego"></textarea>
+      <input name="nome" placeholder="Nome (opcional)">
+      <button type="submit">Continuar</button>
+    </form>
+  </article>
+</div>
+<p><small>Do texto, de um CV e das descrições do LinkedIn, quem tira os fatos é a IA, e cada fato
+  vem com o trecho de origem, conferido em código. E-mail, telefone e CPF saem do texto antes de ir
+  para a IA.</small></p>
+
+{% if importacoes %}
+<h2>Atualizações anteriores</h2>
+<div class="overflow-auto">
+<table>
+  <thead><tr><th>Quando</th><th>Fonte</th><th>Arquivo</th><th>Situação</th></tr></thead>
+  <tbody>
+    {% for imp in importacoes %}
+    <tr>
+      <td>{{ imp.criado_em | hora }}</td>
+      <td>{{ FONTES_IMPORTACAO.get(imp.fonte, imp.fonte) }}</td>
+      <td><a href="/p/{{ perfil.slug }}/importacoes/{{ imp.id }}">{{ imp.nome }}</a></td>
+      <td>
+        {% if imp.status == "secoes" %}escolher as seções
+        {% elif imp.status == "descartada" %}descartada
+        {% elif imp.status == "revisao" and imp.extracao == "pendente" %}aguardando a IA
+        {% elif imp.status == "revisao" %}aguardando você
+        {% elif imp.versao_aplicada %}aplicada na versão {{ imp.versao_aplicada }}
+        {% else %}concluída sem mudanças{% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endif %}
+{% endblock %}

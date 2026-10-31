@@ -155,12 +155,13 @@ Narrativa livre escrita pela pessoa.
 | Campo | Valores | Uso |
 | --- | --- | --- |
 | `id` | F-001, F-002 ... | Referência estável; CVs e avaliações apontam para ele |
-| `tipo` | cargo, resultado, competência, ferramenta, formação, certificação, idioma, preferência, restrição, resposta_padrao | Filtros e seleção para CV |
+| `tipo` | cargo, resultado, competência, ferramenta, formação, certificação, idioma, preferência, restrição, resposta_padrao, contato, docência, mentoria, prêmio, publicação, lacuna | Filtros e seleção para CV |
 | `texto` | uma frase | O que pode ir para CV ou LinkedIn |
-| `periodo`, `empresa` | datas ISO, nome | Checagem de fatos |
+| `empresa`, `cargo` | nomes | Checagem de fatos |
+| `periodo` | `{inicio, fim}` em ISO parcial (`2023-03`); `fim` vazio = atual | Checagem de fatos |
 | `metricas` | chave: valor | Números que o CV pode citar |
 | `origem` | linkedin_pdf, cv, audio, resposta_lacuna, manual + data | Rastreabilidade |
-| `status` | confirmado, proposto, rejeitado | Só `confirmado` vai para CV |
+| `status` | confirmado, proposto, rejeitado | Só `confirmado` vai para CV; propostas de importação ficam no banco; `proposto` escrito à mão é confirmado ou rejeitado na tela do Dossiê (decisão 0004) |
 | `privado` | true/false (🔒) | Nunca vai para CV, LinkedIn ou e-mail |
 | `nao_enviar_ia` | true/false | Nem é enviado ao provedor de IA |
 
@@ -434,15 +435,20 @@ Cada fase só termina com todos os itens dela marcados. Os testes automáticos c
 
 ### Fase 1 — Dossiê
 
-- [ ] Subir o PDF do seu LinkedIn: as propostas aparecem e nada é gravado antes da aprovação.
-- [ ] Datas, cargos e empresas propostos batem com o LinkedIn.
-- [ ] Rejeitar uma proposta, editar outra e aprovar o resto: o dossiê reflete exatamente isso.
-- [ ] A versão sobe e a anterior aparece em `historico/`; a tela mostra o que mudou.
+- [ ] Abrir o app: vai direto ao seu perfil; o menu mostra Início e Dossiê, e o resto fica no menu do nome.
+- [ ] Perfil novo, dossiê vazio: a tela mostra os três caminhos (LinkedIn, o que você já tem, à mão).
+- [ ] Enviar o PDF do LinkedIn num perfil vazio: aparece o rascunho, e um clique em "Usar como meu dossiê" o grava.
+- [ ] Datas, cargos e empresas do rascunho batem com o LinkedIn.
+- [ ] Enviar um dossiê pronto (`.md` do JobFit) num perfil vazio: é adotado direto, sem revisão item a item.
+- [ ] Dossiê já montado, enviar o LinkedIn de novo: só aparece o que é novo; desmarcar um item, corrigir outro e aplicar faz o dossiê refletir exatamente isso.
+- [ ] O item desmarcado não aparece de novo na importação seguinte.
+- [ ] Depois de aplicar, "Desfazer" volta o dossiê como estava.
+- [ ] "+ Adicionar" numa seção e "Remover" no menu ⋯ de um fato: entram direto e aparecem no histórico.
 - [ ] Editar o `dossie.md` à mão no editor, abrir no app: nada se perde.
 - [ ] Quebrar o YAML de um bloco de fatos à mão: o app mostra o erro com a linha e não apaga nada.
-- [ ] Subir um CV antigo com datas diferentes do LinkedIn: o conflito aparece e o LinkedIn prevalece.
-- [ ] Marcar um fato como 🔒: ele aparece no dossiê e some de qualquer prévia de CV.
-- [ ] Importar a Parte A do dossiê v2.7: nada da Parte B ou C entra.
+- [ ] Enviar um CV antigo com datas diferentes do LinkedIn: o conflito aparece no topo, com a sugestão marcada.
+- [ ] Marcar um fato como 🔒: ele aparece no dossiê e some da Visão de CV.
+- [ ] Enviar o dossiê v2 como texto e marcar só a Parte A: nada da Parte B ou C vai para o pedido da IA, nem e-mail ou telefone.
 - [ ] Abrir o dossiê no Google Drive pelo celular: legível.
 
 ### Fase 2 — Áudio e lacunas

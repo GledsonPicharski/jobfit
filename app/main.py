@@ -6,7 +6,7 @@ from fastapi.responses import RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from app.ia import AguardandoResposta
-from app.web import rotas
+from app.web import rotas, rotas_dossie, rotas_importacao
 from app.web.seguranca import ProtecaoLocal
 
 PASTA_STATIC = Path(__file__).parent / "web" / "static"
@@ -25,6 +25,8 @@ def create_app() -> FastAPI:
     app.add_middleware(ProtecaoLocal)
     app.mount("/static", StaticFiles(directory=PASTA_STATIC), name="static")
     app.include_router(rotas.router)
+    app.include_router(rotas_dossie.router)
+    app.include_router(rotas_importacao.router)
 
     @app.exception_handler(rotas.PastaNaoConfigurada)
     async def pedir_pasta(_request: Request, _erro: rotas.PastaNaoConfigurada):

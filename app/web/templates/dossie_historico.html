@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block titulo %}Histórico do dossiê · {{ perfil.nome }} · JobFit{% endblock %}
+{% block conteudo %}
+<h1>Histórico do dossiê</h1>
+{% if versoes %}
+<div class="overflow-auto">
+<table>
+  <thead>
+    <tr><th>Versão</th><th>Quando</th><th>Por quê</th><th>O que mudou</th></tr>
+  </thead>
+  <tbody>
+    {% for v in versoes %}
+    {% set r = resumos[v.versao] %}
+    <tr>
+      <td><a href="/p/{{ perfil.slug }}/dossie/historico/{{ v.versao }}">Versão {{ v.versao }}</a></td>
+      <td>{{ v.criado_em | hora }}</td>
+      <td>{{ MOTIVOS_VERSAO.get(v.motivo, v.motivo) }}</td>
+      <td>
+        {% if r.adicionados %}+{{ r.adicionados | length }} fato(s) {% endif %}
+        {% if r.alterados %}~{{ r.alterados | length }} alterado(s) {% endif %}
+        {% if r.removidos %}−{{ r.removidos | length }} removido(s){% endif %}
+        {% if not (r.adicionados or r.alterados or r.removidos) %}só texto{% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<p>Nenhuma versão ainda. <a href="/p/{{ perfil.slug }}/dossie">Abrir o dossiê</a> cria a primeira.</p>
+{% endif %}
+{% endblock %}
