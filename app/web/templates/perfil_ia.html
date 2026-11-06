@@ -73,4 +73,28 @@
         hx-indicator="#resultado-teste" class="secondary">Testar conexão</button>
 <div id="resultado-teste" aria-live="polite"></div>
 {% endif %}
+
+<hr>
+<h2>Claude Desktop</h2>
+<p>Com o Claude Desktop ligado ao JobFit, você pede no Claude "avalie esta vaga no JobFit"
+  ou "gere o CV dessa vaga", e ele faz a parte de IA pela sua assinatura, sem copiar e colar.
+  O JobFit confere tudo como no modo manual.</p>
+{% if claude == "conectar" %}<p class="sucesso">Ligado. Feche o Claude Desktop (inclusive na bandeja do sistema, perto do relógio) e abra de novo.</p>{% endif %}
+{% if claude == "desconectar" %}<p class="sucesso">Desligado. Feche e abra o Claude Desktop para valer.</p>{% endif %}
+{% if not claude_instalado %}
+<p><small>Não encontrei o Claude Desktop neste computador. Instale-o e volte aqui.</small></p>
+{% else %}
+<form method="post" action="/p/{{ perfil.slug }}/ia/claude-desktop">
+  {% if claude_conectado == perfil.slug %}
+  <p><small>✓ Ligado a este perfil.</small></p>
+  <input type="hidden" name="acao" value="desconectar">
+  <button type="submit" class="outline secondary">Desconectar</button>
+  {% else %}
+  {% if claude_conectado %}<p><small>Hoje o Claude Desktop está ligado ao perfil {{ claude_conectado }}. Conectar troca para este.</small></p>{% endif %}
+  <input type="hidden" name="acao" value="conectar">
+  <button type="submit">Conectar ao Claude Desktop</button>
+  {% endif %}
+</form>
+{% if perfil.ia.precisa_chave %}<p><small>Este perfil está num modo API: pelo Claude Desktop, a IA também seria chamada pela API, com custo. Para usar a assinatura, troque o modo para manual.</small></p>{% endif %}
+{% endif %}
 {% endblock %}

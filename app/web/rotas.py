@@ -5,7 +5,7 @@ Toda tela de perfil fica sob `/p/{slug}/`, para nenhuma misturar dados de dois p
 
 import contextlib
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Literal
 from urllib.parse import urlencode, urlsplit
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
@@ -27,9 +27,17 @@ from app.ia import (
 )
 from app.ia.chaves import salvar_chave, tem_chave
 from app.ia.custos import gasto_do_dia, gasto_do_mes, para_micro_usd
-from app.ia.manual import cancelar_pedido, obter_pedido, pedidos_pendentes, responder_pedido
+from app.ia.manual import (
+    ORIGENS,
+    cancelar_pedido,
+    obter_pedido,
+    pedidos_pendentes,
+    responder_pedido,
+    respostas_por_origem,
+)
 from app.ia.modelos import ChamadaIA, PedidoIA
 from app.ia.tarefas import TESTAR_CONEXAO
+from app.mcp import instalacao
 from app.perfis.exclusao import excluir_perfil
 from app.perfis.modelos import MODELOS_PADRAO, PROVEDORES, PROVEDORES_COM_CHAVE, Perfil, Provedor
 from app.perfis.servico import (
@@ -200,15 +208,20 @@ def custos(request: Request, perfil: PerfilAtual):
             "gasto_mes": gasto_do_mes(engine),
             "teto_micro": para_micro_usd(perfil.ia.teto_diario_usd),
             "recentes": recentes,
+            "respostas": respostas_por_origem(engine),
+            "ORIGENS": ORIGENS,
         },
     )
 
 
 def _tela_ia(request: Request, perfil: Perfil, **extra) -> HTMLResponse:
+    arquivo_claude = instalacao.achar_config()
     contexto = {
         "perfil": perfil,
         "chaves": {p: tem_chave(perfil.slug, p) for p in PROVEDORES_COM_CHAVE},
         "padroes": MODELOS_PADRAO[perfil.ia.provedor],
+        "claude_instalado": arquivo_claude is not None,
+        "claude_conectado": instalacao.conectado(arquivo_claude) if arquivo_claude else None,
         **extra,
     }
     return templates.TemplateResponse(
@@ -217,8 +230,8 @@ def _tela_ia(request: Request, perfil: Perfil, **extra) -> HTMLResponse:
 
 
 @router.get("/p/{slug}/ia", response_class=HTMLResponse)
-def configurar_ia(request: Request, perfil: PerfilAtual, salvo: bool = False):
-    return _tela_ia(request, perfil, salvo=salvo)
+def configurar_ia(request: Request, perfil: PerfilAtual, salvo: bool = False, claude: str = ""):
+    return _tela_ia(request, perfil, salvo=salvo, claude=claude)
 
 
 @router.post("/p/{slug}/ia", response_class=HTMLResponse)
@@ -255,6 +268,26 @@ def salvar_ia(
     if chave.strip() and provedor in PROVEDORES_COM_CHAVE:
         salvar_chave(perfil.slug, provedor, chave)
     return ir(f"/p/{perfil.slug}/ia?salvo=1")
+
+
+@router.post("/p/{slug}/ia/claude-desktop", response_class=HTMLResponse)
+def ligar_claude_desktop(
+    request: Request,
+    perfil: PerfilAtual,
+    acao: Annotated[Literal["conectar", "desconectar"], Form()],
+):
+    """Grava ou tira só a entrada do JobFit na configuração do Claude Desktop (decisão 0008)."""
+    arquivo = instalacao.achar_config()
+    if arquivo is None:
+        return _tela_ia(request, perfil, erro="Não encontrei o Claude Desktop neste computador.")
+    try:
+        if acao == "conectar":
+            instalacao.instalar(arquivo, perfil.slug)
+        else:
+            instalacao.remover(arquivo)
+    except instalacao.ErroInstalacao as erro:
+        return _tela_ia(request, perfil, erro=str(erro))
+    return ir(f"/p/{perfil.slug}/ia?claude={acao}")
 
 
 @router.post("/p/{slug}/ia/testar", response_class=HTMLResponse)
@@ -328,10 +361,12 @@ def _obter_pedido(perfil: Perfil, pedido_id: str) -> PedidoIA:
 def _tela_pedido(
     request: Request, perfil: Perfil, pedido: PedidoIA, status_code: int = 200, **extra
 ) -> HTMLResponse:
+    arquivo_claude = instalacao.achar_config()
+    ligado = arquivo_claude is not None and instalacao.conectado(arquivo_claude) == perfil.slug
     return templates.TemplateResponse(
         request,
         "pedido.html",
-        {"perfil": perfil, "pedido": pedido, **extra},
+        {"perfil": perfil, "pedido": pedido, "claude_conectado": ligado, **extra},
         status_code=status_code,
     )
 
@@ -340,6 +375,16 @@ def _tela_pedido(
 def ver_pedido(request: Request, perfil: PerfilAtual, pedido_id: str, voltar: str = ""):
     pedido = _obter_pedido(perfil, pedido_id)
     return _tela_pedido(request, perfil, pedido, voltar=voltar_seguro(perfil.slug, voltar) or "")
+
+
+@router.get("/p/{slug}/pedidos/{pedido_id}/estado")
+def estado_do_pedido(perfil: PerfilAtual, pedido_id: str, voltar: str = ""):
+    """A tela do pedido pergunta a cada poucos segundos: respondido pelo Claude Desktop, segue."""
+    pedido = _obter_pedido(perfil, pedido_id)
+    if pedido.status == "pendente":
+        return Response(status_code=204)
+    destino = voltar_seguro(perfil.slug, voltar) or f"/p/{perfil.slug}/pedidos/{pedido.id}"
+    return Response(headers={"HX-Redirect": destino})
 
 
 @router.get("/p/{slug}/pedidos/{pedido_id}/pacote.md")

@@ -175,7 +175,12 @@ def _pendente(sessao: Session, pedido_id: str) -> PedidoIA:
     return pedido
 
 
-def responder_pedido(engine: Engine, pedido_id: str, texto: str) -> ResultadoIA:
+ORIGENS = {"chat": "colada do chat", "claude_desktop": "pelo Claude Desktop"}
+
+
+def responder_pedido(
+    engine: Engine, pedido_id: str, texto: str, *, origem: str = "chat"
+) -> ResultadoIA:
     with Session(engine, expire_on_commit=False) as sessao:
         pedido = _pendente(sessao, pedido_id)
         tarefa = TAREFAS.get(pedido.tarefa)
@@ -192,6 +197,7 @@ def responder_pedido(engine: Engine, pedido_id: str, texto: str) -> ResultadoIA:
             raise
         pedido.status = "respondido"
         pedido.respondido_em = agora_utc()
+        pedido.respondido_por = origem
         sessao.add(pedido)
         gravar_cache(
             sessao,
@@ -219,3 +225,15 @@ def cancelar_pedido(engine: Engine, pedido_id: str) -> None:
         pedido.status = "cancelado"
         sessao.add(pedido)
         sessao.commit()
+
+
+def respostas_por_origem(engine: Engine) -> dict[str, int]:
+    """Quantos pedidos foram respondidos por cada caminho (antes da 0008, conta como chat)."""
+    with Session(engine) as sessao:
+        respondidos = sessao.exec(
+            select(PedidoIA.respondido_por).where(PedidoIA.status == "respondido")
+        ).all()
+    contagem: dict[str, int] = {}
+    for origem in respondidos:
+        contagem[origem or "chat"] = contagem.get(origem or "chat", 0) + 1
+    return contagem
