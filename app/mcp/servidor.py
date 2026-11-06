@@ -63,4 +63,21 @@ def criar_servidor(slug: str | None = None) -> MCPServer:
         do pedido. O JobFit valida; se vier errada, diz o que corrigir."""
         return ferramentas.responder(ctx, pedido_id, resposta)
 
+    @servidor.tool()
+    @_erros_para_o_claude
+    async def avaliar_vaga(
+        vaga: str | None = None, vaga_id: int | None = None, forcar: bool = False
+    ) -> str:
+        """Avalia a compatibilidade da pessoa com uma vaga. Em `vaga`, a URL ou o texto da
+        vaga (LinkedIn só por texto colado); ou o `vaga_id` de uma vaga já trazida.
+        `forcar=true` avalia mesmo uma vaga barrada pelos critérios da pessoa. Pode devolver
+        um pedido para você fazer; a nota é sempre calculada pelo JobFit."""
+        return await ferramentas.avaliar_vaga(ctx, vaga, vaga_id, forcar)
+
+    @servidor.tool()
+    @_erros_para_o_claude
+    def listar_vagas(limite: int = 20) -> str:
+        """As vagas mais recentes do JobFit, com o vaga_id, a nota e a situação."""
+        return ferramentas.listar(ctx, limite)
+
     return servidor

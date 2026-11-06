@@ -12,15 +12,21 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
+import anyio
 from sqlalchemy import Engine
 
 from app import config
 from app.db import banco_do_perfil
-from app.ia.erros import AguardandoResposta, PedidoIndisponivel, RespostaInvalida
+from app.dossie.formato import Documento, ErroDossie
+from app.dossie.versoes import carregar_dossie
+from app.ia.erros import AguardandoResposta, ErroIA, PedidoIndisponivel, RespostaInvalida
 from app.ia.manual import obter_pedido, pedidos_pendentes, responder_pedido
 from app.ia.modelos import PedidoIA
 from app.perfis.modelos import Perfil
 from app.perfis.servico import ErroPerfil, carregar_perfil
+from app.vagas import servico as vagas
+from app.vagas.leitura import ErroLeituraVaga, ler_entrada
+from app.vagas.tabelas import Avaliacao, Vaga
 
 ORIGEM = "claude_desktop"
 
@@ -52,6 +58,12 @@ class Contexto:
 
     def engine(self) -> Engine:
         return banco_do_perfil(self.perfil().slug)
+
+    def dossie(self, perfil: Perfil, engine: Engine) -> Documento:
+        try:
+            return carregar_dossie(self.pasta(), engine, perfil)
+        except ErroDossie as erro:
+            raise ErroFerramenta(f"O dossiê tem um erro; corrija no app antes. {erro}") from erro
 
     def link(self, caminho: str) -> str:
         return f"http://127.0.0.1:{config.carregar_config().porta}{caminho}"
@@ -120,3 +132,113 @@ def responder(ctx: Contexto, pedido_id: str, resposta: dict | str) -> str:
         "indicado no pedido (em geral, chamar de novo a mesma ferramenta) para ver o "
         "resultado; se o pedido veio da tela do JobFit, ela segue sozinha."
     )
+
+
+# --- vagas ------------------------------------------------------------------------
+
+
+def _aviso_de_custo(perfil: Perfil) -> str:
+    if not perfil.ia.precisa_chave:
+        return ""
+    return (
+        f"\n(Este perfil está no modo API ({perfil.ia.provedor}): a IA foi chamada pela API, "
+        "com o custo dela. Para usar a assinatura do Claude, troque para o modo manual em "
+        "Configurar IA.)"
+    )
+
+
+def _linha_requisito(r: dict) -> str:
+    peso = "obrigatório" if r["peso"] == "obrigatorio" else "desejável"
+    linha = f"- {r['texto']} ({peso})"
+    if r.get("justificativa"):
+        linha += f": {r['justificativa']}"
+    return linha
+
+
+def resumo_da_avaliacao(ctx: Contexto, engine: Engine, vaga: Vaga, avaliacao: Avaliacao) -> str:
+    titulo = vaga.titulo or "Vaga sem título"
+    partes = [f"Vaga {vaga.id}: {titulo}" + (f" · {vaga.empresa}" if vaga.empresa else "")]
+    filtros = json.loads(avaliacao.filtros)
+    if avaliacao.bloqueada:
+        partes.append("Barrada pelos critérios da pessoa, sem chamar a IA:")
+        partes += [f"- {b}" for b in filtros.get("bloqueios", [])]
+        partes.append("Para avaliar mesmo assim, chame avaliar_vaga com forcar=true.")
+    elif avaliacao.faixa:
+        nome = vagas.FAIXAS[avaliacao.faixa]
+        conclusao = (
+            "vale a candidatura"
+            if avaliacao.recomenda
+            else "abaixo do corte; o JobFit não recomenda, mas a decisão é da pessoa"
+        )
+        partes.append(
+            f"Nota do JobFit (calculada em código): {avaliacao.faixa} · {nome} · "
+            f"{avaliacao.nota}/100: {conclusao}."
+        )
+        requisitos = [r for r in vagas.efetivos(engine, avaliacao) if r["aplica"]]
+        forcas = [r for r in requisitos if r["decisao"] in ("atende", "parcial")]
+        lacunas = [r for r in requisitos if r["decisao"] in ("nao_atende", "nao_sei")]
+        if forcas:
+            partes += ["", "Forças:", *(_linha_requisito(r) for r in forcas)]
+        if lacunas:
+            partes += ["", "Lacunas:", *(_linha_requisito(r) for r in lacunas)]
+    else:
+        partes.append("A IA não achou requisitos nesta vaga; confira a descrição no app.")
+    partes += [f"⚠ {a}" for a in filtros.get("alertas", [])]
+    partes += [
+        "",
+        f"No app (para ajustar requisitos, dizer 'eu tenho isso' ou gerar o CV): "
+        f"{ctx.link(f'/p/{ctx.perfil().slug}/vagas/{vaga.id}')}",
+    ]
+    return "\n".join(partes)
+
+
+async def avaliar_vaga(
+    ctx: Contexto, vaga: str | None = None, vaga_id: int | None = None, forcar: bool = False
+) -> str:
+    perfil = ctx.perfil()
+    engine = banco_do_perfil(perfil.slug)
+    if vaga_id is not None:
+        registrada = vagas.obter_vaga(engine, vaga_id)
+        if registrada is None:
+            raise ErroFerramenta(f"Não existe a vaga {vaga_id} neste perfil (veja listar_vagas).")
+    elif vaga and vaga.strip():
+        try:
+            bruta = await anyio.to_thread.run_sync(ler_entrada, vaga)
+        except ErroLeituraVaga as erro:
+            raise ErroFerramenta(str(erro)) from erro
+        registrada, _ = vagas.registrar_vaga(engine, bruta)
+    else:
+        raise ErroFerramenta("Mande a URL ou o texto da vaga em `vaga`, ou o `vaga_id`.")
+
+    doc = ctx.dossie(perfil, engine)
+    try:
+        avaliacao = await vagas.avaliar(perfil, engine, registrada, doc, forcar=forcar)
+    except AguardandoResposta as erro:
+        forcado = ", forcar=true" if forcar else ""
+        return aguardando(
+            erro, f"Depois, chame avaliar_vaga(vaga_id={registrada.id}{forcado}) para ver a nota."
+        )
+    except ErroIA as erro:
+        raise ErroFerramenta(f"A IA não conseguiu avaliar a vaga. {erro.mensagem}") from erro
+    return resumo_da_avaliacao(ctx, engine, registrada, avaliacao) + _aviso_de_custo(perfil)
+
+
+def listar(ctx: Contexto, limite: int = 20) -> str:
+    lista = vagas.listar_vagas(ctx.engine())[:limite]
+    if not lista:
+        return "Nenhuma vaga no JobFit ainda. Mande uma URL ou um texto para avaliar_vaga."
+    linhas = []
+    for vaga, avaliacao in lista:
+        nota = (
+            f"{avaliacao.faixa} ({vagas.FAIXAS[avaliacao.faixa]}, {avaliacao.nota}/100)"
+            if avaliacao and avaliacao.faixa
+            else "barrada pelos critérios"
+            if avaliacao and avaliacao.bloqueada
+            else "sem nota"
+        )
+        estado = vagas.ESTADOS.get(vaga.estado, vaga.estado).lower()
+        empresa = f" · {vaga.empresa}" if vaga.empresa else ""
+        linhas.append(
+            f"- vaga_id={vaga.id}: {vaga.titulo or 'sem título'}{empresa} · {nota} · {estado}"
+        )
+    return "Vagas mais recentes:\n" + "\n".join(linhas)
