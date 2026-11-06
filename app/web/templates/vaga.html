@@ -138,6 +138,25 @@
 </form>
 {% endif %}
 
+{% if avaliacao and not avaliacao.bloqueada %}
+<article>
+  <header><strong>CV para esta vaga</strong></header>
+  {% set primeiro = "en" if vaga.idioma == "en" else "pt" %}
+  {% set segundo = "pt" if primeiro == "en" else "en" %}
+  <a href="/p/{{ perfil.slug }}/vagas/{{ vaga.id }}/cv?idioma={{ primeiro }}" role="button">Gerar CV em {{ "inglês" if primeiro == "en" else "português" }}</a>
+  <a href="/p/{{ perfil.slug }}/vagas/{{ vaga.id }}/cv?idioma={{ segundo }}" role="button" class="outline secondary">em {{ "inglês" if segundo == "en" else "português" }}</a>
+  {% if cvs %}
+  <ul>
+    {% for c in cvs %}
+    <li><a href="/p/{{ perfil.slug }}/cvs/{{ c.id }}">CV em {{ "português" if c.idioma == "pt" else "inglês" }}</a>
+      <small>· {{ "PDF pronto" if c.estado == "pronto" else "rascunho" }} · {{ c.criado_em | hora }}</small></li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+  <small>O CV usa só fatos confirmados e sem 🔒 do dossiê; cada frase é conferida antes do PDF.</small>
+</article>
+{% endif %}
+
 <div class="acoes-importacao">
   {% for estado, rotulo in ESTADOS_VAGA.items() if estado != vaga.estado %}
   <form method="post" action="/p/{{ perfil.slug }}/vagas/{{ vaga.id }}/estado">

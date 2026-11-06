@@ -8,6 +8,7 @@ from fastapi import APIRouter, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from pydantic import ValidationError
 
+from app.cv.servico import cvs_da_vaga
 from app.db import banco_do_perfil
 from app.dossie.formato import ErroDossie
 from app.dossie.modelos import ROTULOS_TIPO
@@ -192,6 +193,7 @@ def _tela_vaga(
             avaliacao and versao_atual and avaliacao.versao_dossie != versao_atual
         ),
         "chamada": servico.custo_da_avaliacao(engine, avaliacao) if avaliacao else None,
+        "cvs": cvs_da_vaga(engine, vaga.id),
         "TIPOS": ROTULOS_TIPO,
         "TIPO_DA_CATEGORIA": servico.TIPO_DA_CATEGORIA,
         "erro": erro,

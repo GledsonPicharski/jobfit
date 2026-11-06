@@ -16,7 +16,7 @@ from app.dossie.formato import Documento
 from app.dossie.modelos import Fato
 from app.dossie.versoes import alterar_dossie
 from app.ia import executar_detalhado
-from app.ia.modelos import agora_utc
+from app.ia.modelos import ChamadaIA, agora_utc
 from app.ia.tarefas import REDIGIR_CV, CargoParaCV, EntradaCV, FatoParaCV
 from app.perfis.modelos import Perfil
 from app.vagas.servico import efetivos, ultima_avaliacao
@@ -233,3 +233,15 @@ def confirmar_traducao(
 def linhas_do_cargo(cargo: Fato, idioma: Idioma) -> tuple[str | None, str]:
     """Empresa e período, como o código renderiza (nunca vêm da IA)."""
     return cargo.empresa, periodo_legivel(cargo, idioma)
+
+
+def selecionar_contato(doc: Documento) -> list[Fato]:
+    """Contato publicável para o cabeçalho: vem do dossiê, renderizado localmente."""
+    return [f for f in fatos_publicaveis(doc.fatos) if f.tipo == "contato"]
+
+
+def custo(engine: Engine, cv: CV) -> ChamadaIA | None:
+    if cv.chamada_id is None:
+        return None
+    with Session(engine) as sessao:
+        return sessao.get(ChamadaIA, cv.chamada_id)
