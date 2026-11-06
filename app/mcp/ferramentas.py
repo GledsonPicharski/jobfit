@@ -16,6 +16,8 @@ import anyio
 from sqlalchemy import Engine
 
 from app import config
+from app.cv import servico as cvs
+from app.cv.checagem import frases
 from app.db import banco_do_perfil
 from app.dossie.formato import Documento, ErroDossie
 from app.dossie.versoes import carregar_dossie
@@ -242,3 +244,70 @@ def listar(ctx: Contexto, limite: int = 20) -> str:
             f"- vaga_id={vaga.id}: {vaga.titulo or 'sem título'}{empresa} · {nota} · {estado}"
         )
     return "Vagas mais recentes:\n" + "\n".join(linhas)
+
+
+# --- CV ---------------------------------------------------------------------------
+
+IDIOMAS = {"pt": "português", "en": "inglês"}
+
+
+def resumo_do_cv(ctx: Contexto, cv, checagem) -> str:
+    """O que o Claude mostra à pessoa: o rascunho e o que a checagem achou, sem o contato."""
+    rascunho = cvs.rascunho_do_cv(cv)
+    textos = {caminho: frase.texto for caminho, frase in frases(rascunho)}
+    for i, exp in enumerate(rascunho.experiencias):
+        textos[f"experiencias.{i}.titulo"] = f"cargo {exp.titulo}"
+    partes = [
+        f"Rascunho do CV em {IDIOMAS[cv.idioma]} (cv_id={cv.id}) para a vaga {cv.vaga_id}.",
+        f"Título: {rascunho.titulo.texto}",
+        *(f"Resumo: {f.texto}" for f in rascunho.resumo),
+    ]
+    for exp in rascunho.experiencias:
+        partes.append(f"{exp.titulo}:")
+        partes += [f"  - {b.texto}" for b in exp.bullets]
+    if checagem.bloqueios:
+        partes += [
+            "",
+            f"A checagem do JobFit bloqueia o PDF por {checagem.bloqueios} problema(s): "
+            "frases com número, ano, empresa ou cargo sem fato de origem no dossiê.",
+        ]
+    else:
+        partes += ["", "A checagem do JobFit não achou bloqueios: o PDF pode ser gerado no app."]
+    for caminho, problemas in checagem.problemas.items():
+        for p in problemas:
+            rotulo = "bloqueia" if p.nivel == "bloqueio" else "alerta"
+            partes.append(f"- ({rotulo}) {textos.get(caminho, caminho)}: {p.mensagem}")
+    partes += [
+        "",
+        "A pessoa revisa, edita e gera o PDF no app (o JobFit não gera o PDF por aqui): "
+        f"{ctx.link(f'/p/{ctx.perfil().slug}/cvs/{cv.id}')}",
+    ]
+    return "\n".join(partes)
+
+
+async def gerar_cv(
+    ctx: Contexto, vaga_id: int, idioma: str | None = None, novo: bool = False
+) -> str:
+    perfil = ctx.perfil()
+    engine = banco_do_perfil(perfil.slug)
+    vaga = vagas.obter_vaga(engine, vaga_id)
+    if vaga is None:
+        raise ErroFerramenta(f"Não existe a vaga {vaga_id} neste perfil (veja listar_vagas).")
+    idioma = idioma or ("en" if vaga.idioma == "en" else "pt")
+    if idioma not in IDIOMAS:
+        raise ErroFerramenta('O idioma do CV é "pt" ou "en".')
+    doc = ctx.dossie(perfil, engine)
+    try:
+        cv = await cvs.gerar(perfil, engine, doc, vaga, idioma, novo=novo)
+    except AguardandoResposta as erro:
+        novo_arg = ", novo=true" if novo else ""
+        return aguardando(
+            erro,
+            f'Depois, chame gerar_cv(vaga_id={vaga.id}, idioma="{idioma}"{novo_arg}) para ver '
+            "o rascunho e a checagem.",
+        )
+    except cvs.ErroCV as erro:
+        raise ErroFerramenta(f"Não deu para montar o CV. {erro}") from erro
+    except ErroIA as erro:
+        raise ErroFerramenta(f"A IA não conseguiu redigir o CV. {erro.mensagem}") from erro
+    return resumo_do_cv(ctx, cv, cvs.checar_cv(cv, doc, vaga)) + _aviso_de_custo(perfil)

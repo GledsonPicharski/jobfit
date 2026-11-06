@@ -76,6 +76,15 @@ def criar_servidor(slug: str | None = None) -> MCPServer:
 
     @servidor.tool()
     @_erros_para_o_claude
+    async def gerar_cv(vaga_id: int, idioma: str | None = None, novo: bool = False) -> str:
+        """Gera o rascunho do CV da pessoa para uma vaga avaliada, em "pt" ou "en" (padrão:
+        o idioma da vaga). Reabre o rascunho que já existe, com as edições da pessoa;
+        `novo=true` redige outro com o dossiê atual. Pode devolver um pedido para você
+        fazer. O JobFit confere cada frase; o PDF é gerado no app, depois da revisão."""
+        return await ferramentas.gerar_cv(ctx, vaga_id, idioma, novo)
+
+    @servidor.tool()
+    @_erros_para_o_claude
     def listar_vagas(limite: int = 20) -> str:
         """As vagas mais recentes do JobFit, com o vaga_id, a nota e a situação."""
         return ferramentas.listar(ctx, limite)
