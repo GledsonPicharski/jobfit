@@ -1,0 +1,21 @@
+# Quanto do dossiê vai para um CV, para caber em 1 a 2 páginas.
+# Mudou algo aqui? Gere alguns CVs e rode `jobfit eval --conjunto cv` antes do PR.
+
+# Cargos que terminaram há mais que isto (ou os atuais) entram com bullets; os mais
+# antigos entram só com a linha do cargo, empresa e datas.
+anos_detalhados: 10
+
+# Resultados candidatos por cargo detalhado (a IA escreve no máximo este tanto).
+bullets_por_cargo: 5
+
+# Itens das seções curtas.
+competencias: 14
+certificacoes: 4
+premios_publicacoes: 3
+docencia_mentoria: 3
+
+# Frases do resumo no topo do CV.
+frases_resumo: 3
+
+# Acima disto, a frase ganha um alerta (não bloqueia).
+caracteres_por_frase: 240
