@@ -12,16 +12,11 @@ import re
 
 from app.dossie.propostas import Candidato
 from app.ia.tarefas import FatoExtraido, FatosExtraidos
-from app.textos import contem
+from app.textos import contem, digitos, numeros
 
 _CPF = re.compile(r"(?<![\w.])\d{3}\.?\d{3}\.?\d{3}-?\d{2}(?!\w)")
 _EMAIL = re.compile(r"(?<![\w.+-])[\w.+-]+@(?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,}")
 _TELEFONE = re.compile(r"(?<![\w+])(?:\+55\s?)?\(?\d{2}\)?\s?9?\d{4}[-\s]?\d{4}(?!\w)")
-_NUMERO = re.compile(r"\d+(?:[.,]\d+)*%?")
-
-
-def _digitos(numero: str) -> str:
-    return re.sub(r"\D", "", numero)
 
 
 def mascarar(texto: str, fonte: str) -> tuple[str, list[Candidato]]:
@@ -57,11 +52,11 @@ def checar(fato: FatoExtraido, fonte: str) -> list[str]:
     if not contem(fonte, fato.trecho):
         alertas.append("O trecho de origem não está no texto importado.")
 
-    no_trecho = {_digitos(n) for n in _NUMERO.findall(fato.trecho)}
+    no_trecho = {digitos(n) for n in numeros(fato.trecho)}
     valores = [fato.texto, *(str(v) for v in fato.metricas.values())]
     sem_origem: list[str] = []
-    for numero in (n for valor in valores for n in _NUMERO.findall(valor)):
-        if _digitos(numero) not in no_trecho and numero not in sem_origem:
+    for numero in (n for valor in valores for n in numeros(valor)):
+        if digitos(numero) not in no_trecho and numero not in sem_origem:
             sem_origem.append(numero)
     if sem_origem:
         alertas.append(f"Número sem origem no trecho: {', '.join(sem_origem)}.")
