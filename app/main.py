@@ -1,4 +1,3 @@
-from pathlib import Path
 from urllib.parse import quote, urlsplit
 
 from fastapi import FastAPI, Request
@@ -7,9 +6,8 @@ from fastapi.staticfiles import StaticFiles
 
 from app.ia import AguardandoResposta
 from app.web import rotas, rotas_cv, rotas_dossie, rotas_importacao, rotas_vagas
+from app.web.rotas import PASTA_STATIC
 from app.web.seguranca import ProtecaoLocal
-
-PASTA_STATIC = Path(__file__).parent / "web" / "static"
 
 
 def _de_onde_veio(request: Request) -> str:

@@ -1,4 +1,5 @@
 import json
+import re
 from decimal import Decimal
 from urllib.parse import urlsplit
 
@@ -38,6 +39,12 @@ def test_primeira_execucao_pede_a_pasta(cliente):
     assert resposta.status_code == 303
     assert resposta.headers["location"] == "/configurar-pasta"
     assert "Pasta de dados" in cliente.get("/configurar-pasta").text
+
+
+def test_css_com_versao_para_o_navegador_nao_usar_o_antigo(cliente):
+    tela = cliente.get("/configurar-pasta").text
+    href = re.search(r'href="(/static/app\.css\?v=\d+)"', tela)
+    assert href and cliente.get(href.group(1)).status_code == 200
 
 
 def test_configurar_pasta_com_aspas_espaco_e_acento(cliente, tmp_path):
