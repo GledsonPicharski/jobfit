@@ -149,14 +149,17 @@ async def gerar(
     vaga: Vaga | None,
     idioma: Idioma,
     hoje: date | None = None,
+    *,
+    novo: bool = False,
 ) -> CV:
-    """Idempotente: com o mesmo dossiê, devolve o rascunho que já existe para a vaga e idioma.
+    """Abre o rascunho que já existe para a vaga e o idioma, com as edições da pessoa.
 
+    Com `novo`, redige outro com o dossiê atual (no mesmo dossiê, a resposta sai do cache).
     No modo manual, `executar` levanta `AguardandoResposta` e a resposta volta pelo cache.
     """
     if vaga is not None:
         for existente in cvs_da_vaga(engine, vaga.id):
-            if existente.idioma == idioma and existente.versao_dossie == _versao(doc):
+            if existente.idioma == idioma and (not novo or existente.versao_dossie == _versao(doc)):
                 return existente
     config = carregar_config()
     citados = citados_na_avaliacao(engine, vaga)

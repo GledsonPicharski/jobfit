@@ -50,13 +50,14 @@ async def gerar_cv(
     perfil: PerfilAtual,
     vaga_id: int,
     idioma: Literal["pt", "en"] = "pt",
+    novo: bool = False,
 ):
     """GET de propósito: no modo manual, a resposta colada volta para cá e sai do cache."""
     vaga = _vaga(perfil, vaga_id)
     engine = banco_do_perfil(perfil.slug)
     try:
         doc = carregar_dossie(pasta, engine, perfil)
-        cv = await cvs.gerar(perfil, engine, doc, vaga, idioma)
+        cv = await cvs.gerar(perfil, engine, doc, vaga, idioma, novo=novo)
     except (ErroDossie, cvs.ErroCV) as erro:
         return _erro_na_vaga(request, pasta, perfil, vaga, f"Não deu para montar o CV. {erro}")
     except ErroIA as erro:
@@ -96,6 +97,7 @@ def _tela_cv(request: Request, pasta, perfil: Perfil, cv: CV, erro: str = "", st
         "alertas": json.loads(cv.alertas),
         "chamada": cvs.custo(engine, cv),
         "titulos": TITULOS_SECAO[cv.idioma],
+        "dossie_mudou": cv.versao_dossie != doc.metadados.get("versao"),
         "erro": erro,
     }
     return templates.TemplateResponse(request, "cv.html", contexto, status_code=status)

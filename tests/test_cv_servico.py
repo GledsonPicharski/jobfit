@@ -157,3 +157,16 @@ async def test_modo_manual_pede_resposta(pasta_dados):
     with pytest.raises(AguardandoResposta):
         await gerar(perfil, engine, ler_dossie(EXEMPLO), vaga, "pt", hoje=HOJE)
     assert "redigir_cv v1" in pedidos_pendentes(engine)[0].pacote
+
+
+async def test_dossie_mudou_abre_o_mesmo_rascunho_ate_pedir_um_novo(engine, ana, usar_modelo):
+    falso = usar_modelo(Falso(REDIGIDO))
+    vaga, _ = registrar_vaga(engine, ler_texto(VAGA))
+    primeiro = await gerar(ana, engine, ler_dossie(EXEMPLO), vaga, "pt", hoje=HOJE)
+    mudado = ler_dossie(EXEMPLO)
+    mudado.definir_metadado("versao", 99)
+    assert (await gerar(ana, engine, mudado, vaga, "pt", hoje=HOJE)).id == primeiro.id
+    novo = await gerar(ana, engine, mudado, vaga, "pt", hoje=HOJE, novo=True)
+    assert novo.id != primeiro.id
+    assert (await gerar(ana, engine, mudado, vaga, "pt", hoje=HOJE, novo=True)).id == novo.id
+    assert falso.chamadas == 1  # mesma entrada: o segundo saiu do cache

@@ -72,6 +72,11 @@
   </div>
   <small>{% if chamada %}Redação: {{ chamada.custo_micro_usd | usd }}{% if chamada.cache_hit %} (do cache){% endif %} · {% endif %}
     criado em {{ cv.criado_em | hora }}. Apagar o texto de uma frase também a remove.</small>
+  {% if vaga and dossie_mudou %}
+  <p><small>O dossiê mudou desde este rascunho.
+    <a href="/p/{{ perfil.slug }}/vagas/{{ vaga.id }}/cv?idioma={{ cv.idioma }}&novo=1">Gerar de novo com o dossiê atual</a>
+    (as edições deste rascunho ficam nele).</small></p>
+  {% endif %}
 </form>
 
 {% if cv.estado == "pronto" and cv.arquivo_pdf %}
