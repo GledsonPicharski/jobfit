@@ -111,3 +111,12 @@ Os dois usuários usam Windows. Desenvolver e testar pensando nele:
 - `text-transform` no CSS muda o texto que o PDF entrega ("Resumo" vira "RESUMO" ao copiar). Em documento para ATS, escreva o texto como deve ser lido.
 - Meça o tamanho com o dossiê real: com os limites iniciais, o CV dava 3 páginas. Os limites ficam em `config/cv.yaml`, e o ensaio de páginas usa uma pasta temporária.
 - O mesmo campo pode ter tipos diferentes em tarefas diferentes (`titulo` é texto na avaliação e objeto no CV). O modelo falso dos testes responde pela tarefa (`info.output_tools[0].parameters_json_schema["title"]`).
+
+**Fase 4b**
+
+- O SDK `mcp` 2.x renomeou o FastMCP: é `mcp.server.mcpserver.MCPServer`. Para testes, `mcp.Client(servidor)` conecta no mesmo processo. Um `ToolError` vira um resultado com `is_error`.
+- O MCP é um caminho de resposta do modo manual, não um provedor: a chave do cache inclui `provedor:modelo`, e um provedor novo separaria a tela do Claude Desktop.
+- No servidor stdio, o stdout é só do protocolo. Um teste roda o processo real e confere que toda linha é JSON-RPC.
+- O Claude Desktop da Microsoft Store lê a configuração de `%LOCALAPPDATA%\Packages\Claude_*\LocalCache\Roaming\Claude\`, não de `%APPDATA%\Claude`.
+- Teste nunca toca no arquivo real do Claude Desktop: o `conftest` aponta `JOBFIT_CLAUDE_CONFIG` para uma pasta temporária. Trocar `LOCALAPPDATA` quebraria o Chromium do Playwright, que mora lá.
+- O navegador guarda o CSS em cache: os arquivos de `/static` saem com `?v=<data de alteração>` (`estatico()` em `app/web/rotas.py`).
