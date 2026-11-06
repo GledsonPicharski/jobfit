@@ -70,6 +70,7 @@ def test_migracoes_batem_com_os_modelos():
     from alembic.migration import MigrationContext
     from sqlmodel import SQLModel
 
+    import app.cv.tabelas  # noqa: F401
     import app.dossie.tabelas  # noqa: F401
     import app.vagas.tabelas  # noqa: F401
 
