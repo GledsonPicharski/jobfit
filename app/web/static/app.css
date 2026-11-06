@@ -59,8 +59,20 @@ li.requisito small { display: block; }
 li.decisao-atende { border-left-color: #2e7d32 !important; } li.decisao-parcial { border-left-color: #9e9d24 !important; }
 li.decisao-nao_atende { border-left-color: #c62828 !important; } li.decisao-nao_sei { border-left-color: #ef6c00 !important; }
 pre.texto-vaga { white-space: pre-wrap; font-family: inherit; }
-details.tenho { margin: 0.25rem 0; }
-form.faixa-esperada { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; } form.faixa-esperada button { margin: 0; }
+/* Detalhes que abrem: a seta fica antes do texto e gira ao abrir, como um link "ver mais". */
+details.expandir { margin: 0.35rem 0; }
+details.expandir > summary { color: var(--pico-primary); }
+details.expandir > summary::after { display: none; }
+details.expandir > summary::before { content: "▸"; display: inline-block; width: 1em; transition: transform 0.15s; }
+details.expandir[open] > summary::before { transform: rotate(90deg); }
+details.expandir > summary small { display: inline; }
+details.tenho[open] { padding: 0.5rem 0.75rem; border: 1px solid var(--pico-muted-border-color); border-radius: var(--pico-border-radius); }
+.acoes-requisito { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.75rem; }
+.acoes-requisito form.em-linha button { margin: 0; }
+.acoes-vaga { margin: 0.5rem 0 1.25rem; }
+.acoes-vaga form button, .acoes-vaga a[role="button"] { margin: 0; }
+article.faixa-esperada form { display: flex; gap: 0.5rem; flex-wrap: wrap; margin: 0 0 0.5rem; }
+article.faixa-esperada button { margin: 0; width: auto; }
 .frase-cv { margin-bottom: 0.6rem; }
 .frase-cv textarea { margin-bottom: 0.15rem; }
 .frase-cv.com-problema textarea, .experiencia-cv:has(small.falha) > input { border-color: var(--pico-del-color); }

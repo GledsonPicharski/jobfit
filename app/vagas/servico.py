@@ -31,7 +31,8 @@ from app.vagas.tabelas import Ajuste, Avaliacao, Vaga
 from app.validacao import descrever_erro
 
 ESTADOS = {"avaliada": "Avaliada", "quero_aplicar": "Quero aplicar", "descartada": "Descartada"}
-FAIXAS = ("A", "B", "C", "D")
+# O que cada faixa quer dizer, para quem lê a tela (os cortes ficam em config/avaliacao.yaml).
+FAIXAS = {"A": "combina muito", "B": "combina bem", "C": "combina pouco", "D": "não combina"}
 
 
 class ErroVaga(ValueError):

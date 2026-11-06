@@ -31,6 +31,7 @@ templates.env.globals.update(
     SENIORIDADES=SENIORIDADES,
     NIVEIS_INGLES=NIVEIS_INGLES,
     ESTADOS_VAGA=servico.ESTADOS,
+    FAIXAS=servico.FAIXAS,
     ACOES_REQUISITO=ACOES,
     DECISOES_REQUISITO={
         "atende": "atende",

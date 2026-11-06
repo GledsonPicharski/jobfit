@@ -17,14 +17,16 @@
     </small>
     {% endif %}
     {% if r.alerta %}<small class="falha">⚠ {{ r.alerta }}</small>{% endif %}
-    <details><summary><small>trecho da vaga</small></summary><blockquote><small>{{ r.trecho }}</small></blockquote></details>
+    <details class="expandir"><summary><small>trecho da vaga</small></summary><blockquote><small>{{ r.trecho }}</small></blockquote></details>
     {% set base = "/p/" ~ perfil.slug ~ "/vagas/" ~ vaga.id ~ "/requisitos/" ~ r.posicao %}
     {% if r.ajuste %}
+    <div class="acoes-requisito">
     <form method="post" action="{{ base }}/desfazer" class="em-linha">
       <button type="submit" class="outline secondary pequeno">Desfazer{% if r.ajuste == "tenho" %} (tira o fato do dossiê){% endif %}</button>
     </form>
+    </div>
     {% elif r.decisao in ("nao_atende", "nao_sei") %}
-    <details class="tenho">
+    <details class="expandir tenho">
       <summary><small><strong>Eu tenho isso</strong></small></summary>
       <form method="post" action="{{ base }}/tenho">
         <textarea name="texto" rows="2" required placeholder="Conte em uma frase o que você fez ou sabe (vira um fato do seu dossiê)"></textarea>
@@ -39,6 +41,7 @@
         <button type="submit" class="pequeno">Adicionar ao dossiê</button>
       </form>
     </details>
+    <div class="acoes-requisito">
     <form method="post" action="{{ base }}/ajuste" class="em-linha">
       <input type="hidden" name="acao" value="nao_tenho">
       <button type="submit" class="outline secondary pequeno">Não tenho</button>
@@ -47,7 +50,9 @@
       <input type="hidden" name="acao" value="nao_se_aplica">
       <button type="submit" class="outline secondary pequeno">Não se aplica</button>
     </form>
+    </div>
     {% else %}
+    <div class="acoes-requisito">
     <form method="post" action="{{ base }}/ajuste" class="em-linha">
       <input type="hidden" name="acao" value="nao_e_bem_assim">
       <button type="submit" class="outline secondary pequeno">Não é bem assim</button>
@@ -56,9 +61,27 @@
       <input type="hidden" name="acao" value="nao_se_aplica">
       <button type="submit" class="outline secondary pequeno">Não se aplica</button>
     </form>
+    </div>
     {% endif %}
   </div>
 </li>
+{% endmacro %}
+{% set com_cv = avaliacao and not avaliacao.bloqueada %}
+{% set primeiro = "en" if vaga.idioma == "en" else "pt" %}
+{% set segundo = "pt" if primeiro == "en" else "en" %}
+{% macro acoes_vaga() %}
+<div class="acoes-importacao acoes-vaga">
+  {% if com_cv %}
+  <a href="/p/{{ perfil.slug }}/vagas/{{ vaga.id }}/cv?idioma={{ primeiro }}" role="button">Gerar CV em {{ "inglês" if primeiro == "en" else "português" }}</a>
+  <a href="/p/{{ perfil.slug }}/vagas/{{ vaga.id }}/cv?idioma={{ segundo }}" role="button" class="outline secondary">em {{ "inglês" if segundo == "en" else "português" }}</a>
+  {% endif %}
+  {% for estado, rotulo in ESTADOS_VAGA.items() if estado != vaga.estado %}
+  <form method="post" action="/p/{{ perfil.slug }}/vagas/{{ vaga.id }}/estado">
+    <input type="hidden" name="estado" value="{{ estado }}">
+    <button type="submit" class="{% if estado != 'quero_aplicar' or com_cv %}outline secondary{% endif %}">{{ rotulo }}</button>
+  </form>
+  {% endfor %}
+</div>
 {% endmacro %}
 <p><small><a href="/p/{{ perfil.slug }}/vagas">← Vagas</a></small></p>
 <h1>{{ vaga.titulo or "Vaga sem título" }}</h1>
@@ -70,6 +93,7 @@
   {% if meta.ingles %}inglês {{ NIVEIS_INGLES[meta.ingles] }} · {% endif %}
   {% if vaga.url %}<a href="{{ vaga.url }}" target="_blank" rel="noopener noreferrer">abrir a vaga</a>{% else %}texto colado{% endif %}
 </p>
+{{ acoes_vaga() }}
 
 {% if adicionado %}<article class="aviso sucesso-caixa">Adicionado ao dossiê como
   <a href="/p/{{ perfil.slug }}/dossie#{{ adicionado }}">{{ adicionado }}</a>, e a nota foi recalculada,
@@ -96,7 +120,7 @@
 {% if avaliacao and not avaliacao.bloqueada %}
 <article class="nota">
   {% if avaliacao.faixa %}
-  <p class="nota-valor"><span class="faixa faixa-{{ avaliacao.faixa }}">{{ avaliacao.faixa }}</span> {{ avaliacao.nota }}<small>/100</small></p>
+  <p class="nota-valor"><span class="faixa faixa-{{ avaliacao.faixa }}">{{ avaliacao.faixa }}</span> {{ avaliacao.nota }}<small>/100 · {{ FAIXAS[avaliacao.faixa] }}</small></p>
   <p>{% if avaliacao.recomenda %}Vale a candidatura.{% else %}Abaixo do corte: o JobFit não recomenda, mas a decisão é sua.{% endif %}
     <small>{{ forcas | length }} força(s) · {{ lacunas | length }} lacuna(s){% if fora %} · {{ fora | length }} fora da nota{% endif %}</small></p>
   {% else %}
@@ -127,47 +151,37 @@
 {% endif %}
 
 {% if avaliacao and avaliacao.faixa %}
-<form method="post" action="/p/{{ perfil.slug }}/vagas/{{ vaga.id }}/faixa" class="faixa-esperada">
-  <small>Qual faixa você daria a esta vaga?</small>
-  {% for f in ("A", "B", "C", "D") %}
-  <button type="submit" name="faixa" value="{{ f }}" class="pequeno {% if vaga.faixa_esperada != f %}outline{% endif %}">{{ f }}</button>
-  {% endfor %}
+<article class="faixa-esperada">
+  <p><strong>Na sua opinião, quanto esta vaga combina com você?</strong><br>
+    <small>Não muda a nota: serve para medir se o JobFit avalia como você avaliaria.</small></p>
+  <form method="post" action="/p/{{ perfil.slug }}/vagas/{{ vaga.id }}/faixa">
+    {% for f, rotulo in FAIXAS.items() %}
+    <button type="submit" name="faixa" value="{{ f }}" class="pequeno {% if vaga.faixa_esperada != f %}outline secondary{% endif %}">{{ rotulo | capitalize }} ({{ f }})</button>
+    {% endfor %}
+  </form>
   {% if vaga.faixa_esperada %}
-  <small>{% if vaga.faixa_esperada == avaliacao.faixa %}bate com o JobFit{% else %}o JobFit deu {{ avaliacao.faixa }}{% endif %}</small>
+  <small>{% if vaga.faixa_esperada == avaliacao.faixa %}Bate com o JobFit.{% else %}O JobFit deu {{ avaliacao.faixa }} ({{ FAIXAS[avaliacao.faixa] }}).{% endif %}</small>
   {% endif %}
-</form>
+</article>
 {% endif %}
 
-{% if avaliacao and not avaliacao.bloqueada %}
+{% if com_cv and cvs %}
 <article>
-  <header><strong>CV para esta vaga</strong></header>
-  {% set primeiro = "en" if vaga.idioma == "en" else "pt" %}
-  {% set segundo = "pt" if primeiro == "en" else "en" %}
-  <a href="/p/{{ perfil.slug }}/vagas/{{ vaga.id }}/cv?idioma={{ primeiro }}" role="button">Gerar CV em {{ "inglês" if primeiro == "en" else "português" }}</a>
-  <a href="/p/{{ perfil.slug }}/vagas/{{ vaga.id }}/cv?idioma={{ segundo }}" role="button" class="outline secondary">em {{ "inglês" if segundo == "en" else "português" }}</a>
-  {% if cvs %}
+  <header><strong>CVs desta vaga</strong></header>
   <ul>
     {% for c in cvs %}
     <li><a href="/p/{{ perfil.slug }}/cvs/{{ c.id }}">CV em {{ "português" if c.idioma == "pt" else "inglês" }}</a>
       <small>· {{ "PDF pronto" if c.estado == "pronto" else "rascunho" }} · {{ c.criado_em | hora }}</small></li>
     {% endfor %}
   </ul>
-  {% endif %}
-  <small>O CV usa só fatos confirmados e sem 🔒 do dossiê; cada frase é conferida antes do PDF.</small>
 </article>
 {% endif %}
 
-<div class="acoes-importacao">
-  {% for estado, rotulo in ESTADOS_VAGA.items() if estado != vaga.estado %}
-  <form method="post" action="/p/{{ perfil.slug }}/vagas/{{ vaga.id }}/estado">
-    <input type="hidden" name="estado" value="{{ estado }}">
-    <button type="submit" class="{% if estado != 'quero_aplicar' %}outline secondary{% endif %}">{{ rotulo }}</button>
-  </form>
-  {% endfor %}
-</div>
-<p><small>Situação: {{ ESTADOS_VAGA.get(vaga.estado, vaga.estado) }}</small></p>
+{{ acoes_vaga() }}
+<p><small>Situação: {{ ESTADOS_VAGA.get(vaga.estado, vaga.estado) }}
+  {% if com_cv %} · o CV usa só fatos confirmados e sem 🔒 do dossiê; cada frase é conferida antes do PDF{% endif %}</small></p>
 
-<details>
+<details class="expandir">
   <summary>Descrição completa da vaga</summary>
   <pre class="texto-vaga">{{ vaga.texto }}</pre>
   <small>Cópia guardada em {{ vaga.criado_em | hora }}: continua aqui mesmo se a vaga sair do ar.</small>
