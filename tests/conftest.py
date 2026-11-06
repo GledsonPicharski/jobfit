@@ -39,6 +39,8 @@ class ChaveiroMemoria(KeyringBackend):
 def ambiente_isolado(tmp_path, monkeypatch):
     """Pasta do app e cofre de chaves temporários em todo teste."""
     monkeypatch.setenv("JOBFIT_HOME", str(tmp_path / "AppData Local" / "JobFit"))
+    claude = tmp_path / "AppData Roaming" / "Claude" / "claude_desktop_config.json"
+    monkeypatch.setenv("JOBFIT_CLAUDE_CONFIG", str(claude))
     original = keyring.get_keyring()
     chaveiro = ChaveiroMemoria()
     keyring.set_keyring(chaveiro)
