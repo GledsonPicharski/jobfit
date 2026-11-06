@@ -117,6 +117,6 @@ Os dois usuários usam Windows. Desenvolver e testar pensando nele:
 - O SDK `mcp` 2.x renomeou o FastMCP: é `mcp.server.mcpserver.MCPServer`. Para testes, `mcp.Client(servidor)` conecta no mesmo processo. Um `ToolError` vira um resultado com `is_error`.
 - O MCP é um caminho de resposta do modo manual, não um provedor: a chave do cache inclui `provedor:modelo`, e um provedor novo separaria a tela do Claude Desktop.
 - No servidor stdio, o stdout é só do protocolo. Um teste roda o processo real e confere que toda linha é JSON-RPC.
-- O Claude Desktop da Microsoft Store lê a configuração de `%LOCALAPPDATA%\Packages\Claude_*\LocalCache\Roaming\Claude\`, não de `%APPDATA%\Claude`.
+- O Claude Desktop da Microsoft Store, nas versões recentes, move os dados para `%LOCALAPPDATA%\Claude-Data\claude_<id>\`, e a configuração vale ali. Um marcador `.user-data-left.*` fica na pasta antiga do pacote (`Packages\Claude_*\LocalCache\Roaming\Claude\`). Confira no `main.log` (`[user-data-move]`) em vez de supor o caminho pela pasta que existe.
 - Teste nunca toca no arquivo real do Claude Desktop: o `conftest` aponta `JOBFIT_CLAUDE_CONFIG` para uma pasta temporária. Trocar `LOCALAPPDATA` quebraria o Chromium do Playwright, que mora lá.
 - O navegador guarda o CSS em cache: os arquivos de `/static` saem com `?v=<data de alteração>` (`estatico()` em `app/web/rotas.py`).

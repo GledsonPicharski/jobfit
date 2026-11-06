@@ -44,6 +44,25 @@ def test_versao_da_store_vem_antes_da_do_instalador(pastas):
     assert achar_config(candidatos) == candidatos[0]
 
 
+def test_dados_movidos_para_fora_do_pacote_vem_primeiro(pastas):
+    """Versões recentes da Store movem os dados para %LOCALAPPDATA%\\Claude-Data\\claude_<id>."""
+    local, roaming = pastas
+    (local / "Packages" / "Claude_pzs8sxrjxfjjc" / "LocalCache" / "Roaming" / "Claude").mkdir(
+        parents=True
+    )
+    movidos = local / "Claude-Data" / "claude_pzs8sxrjxfjjc"
+    movidos.mkdir(parents=True)
+    candidatos = caminhos_possiveis(localappdata=local, appdata=roaming)
+    assert candidatos[0] == movidos / "claude_desktop_config.json"
+    assert achar_config(candidatos) == candidatos[0]
+
+    # mesmo que um arquivo antigo tenha ficado na pasta do pacote
+    antigo = candidatos[1]
+    antigo.write_text("{}", encoding="utf-8")
+    (movidos / "claude_desktop_config.json").write_text("{}", encoding="utf-8")
+    assert achar_config(candidatos) == candidatos[0]
+
+
 def test_versao_do_instalador_e_sem_claude(pastas):
     local, roaming = pastas
     candidatos = caminhos_possiveis(localappdata=local, appdata=roaming)

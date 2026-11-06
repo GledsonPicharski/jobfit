@@ -2,7 +2,8 @@
 
 Só essa entrada é tocada; o resto do arquivo (outros servidores, preferências) fica como
 estava, e uma cópia `.bak` é feita antes de gravar. Na versão da Microsoft Store, o
-Claude Desktop lê o arquivo de dentro da pasta do pacote, não de `%APPDATA%\\Claude`.
+Claude Desktop lê o arquivo de `%LOCALAPPDATA%\\Claude-Data\\claude_<id>` (versões
+recentes) ou de dentro da pasta do pacote, não de `%APPDATA%\\Claude`.
 """
 
 import json
@@ -33,10 +34,14 @@ def caminhos_possiveis(
     if sys.platform == "win32" or localappdata or appdata:
         local = localappdata or Path(os.environ.get("LOCALAPPDATA", ""))
         roaming = appdata or Path(os.environ.get("APPDATA", ""))
+        # versões recentes da Store movem os dados para fora do pacote, em Claude-Data
+        movidos = sorted((local / "Claude-Data").glob("claude_*")) if local.parts else []
         pacotes = sorted((local / "Packages").glob("Claude_*")) if local.parts else []
-        return [p / "LocalCache" / "Roaming" / "Claude" / ARQUIVO for p in pacotes] + [
-            roaming / "Claude" / ARQUIVO
-        ]
+        return (
+            [p / ARQUIVO for p in movidos if p.is_dir()]
+            + [p / "LocalCache" / "Roaming" / "Claude" / ARQUIVO for p in pacotes]
+            + [roaming / "Claude" / ARQUIVO]
+        )
     casa = casa or Path.home()
     if sys.platform == "darwin":
         return [casa / "Library" / "Application Support" / "Claude" / ARQUIVO]
@@ -46,6 +51,10 @@ def caminhos_possiveis(
 def achar_config(candidatos: list[Path] | None = None) -> Path | None:
     """O arquivo que já existe; senão, onde a pasta do Claude já existe; senão, nenhum."""
     candidatos = caminhos_possiveis() if candidatos is None else candidatos
+    # a pasta Claude-Data só existe depois que o Claude moveu os dados: ela manda
+    for caminho in candidatos:
+        if "Claude-Data" in caminho.parts:
+            return caminho
     for caminho in candidatos:
         if caminho.is_file():
             return caminho
