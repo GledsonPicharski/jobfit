@@ -43,11 +43,19 @@ from app.vagas.servico import listar_vagas
 from app.web.formatos import formatar_hora_local, formatar_usd, ler_decimal
 
 PASTA_TEMPLATES = Path(__file__).parent / "templates"
+PASTA_STATIC = Path(__file__).parent / "static"
+
+
+def estatico(nome: str) -> str:
+    """URL do arquivo com a data de alteração: o navegador não fica com o CSS antigo em cache."""
+    return f"/static/{nome}?v={int((PASTA_STATIC / nome).stat().st_mtime)}"
+
 
 templates = Jinja2Templates(directory=PASTA_TEMPLATES)
 templates.env.filters["usd"] = formatar_usd
 templates.env.filters["hora"] = formatar_hora_local
 templates.env.globals["PROVEDORES"] = PROVEDORES
+templates.env.globals["estatico"] = estatico
 templates.env.globals["PROVEDORES_COM_CHAVE"] = PROVEDORES_COM_CHAVE
 
 router = APIRouter()

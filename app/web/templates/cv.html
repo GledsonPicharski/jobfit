@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block titulo %}CV · {{ perfil.nome }} · JobFit{% endblock %}
+{% block conteudo %}
+{% macro campo(caminho, frase, linhas=2) %}
+<div class="frase-cv{% if caminho in problemas %} com-problema{% endif %}" id="{{ caminho }}">
+  <textarea name="{{ caminho }}" rows="{{ linhas }}">{{ frase.texto }}</textarea>
+  <small class="fato-meta">
+    {% for fid in frase.fatos %}<a href="/p/{{ perfil.slug }}/dossie#{{ fid }}" title="{{ fatos[fid].texto if fid in fatos else 'fato removido do dossiê' }}">{{ fid }}</a>{% if not loop.last %}, {% endif %}{% else %}sem fato{% endfor %}
+    · <label class="em-linha"><input type="checkbox" name="remover" value="{{ caminho }}"> remover</label>
+  </small>
+  {% for p in problemas.get(caminho, []) %}
+  <small class="{% if p.nivel == 'bloqueio' %}falha{% endif %}">{% if p.nivel == 'bloqueio' %}⛔{% else %}⚠{% endif %} {{ p.mensagem }}</small>
+  {% endfor %}
+</div>
+{% endmacro %}
+
+<p><small>{% if vaga %}<a href="/p/{{ perfil.slug }}/vagas/{{ vaga.id }}">← {{ vaga.titulo or "Vaga" }}</a>{% endif %}</small></p>
+<h1>CV em {{ "português" if cv.idioma == "pt" else "inglês" }}{% if vaga and vaga.empresa %} · {{ vaga.empresa }}{% endif %}</h1>
+
+{% if erro %}<article class="aviso falha"><p>{{ erro }}</p></article>{% endif %}
+<article class="aviso{% if checagem.bloqueios %} falha{% else %} sucesso-caixa{% endif %}">
+  {% if checagem.bloqueios %}
+  <strong>{{ checagem.bloqueios }} ponto(s) a corrigir antes do PDF.</strong>
+  Todo número, ano, empresa e cargo precisa de um fato do dossiê. Corrija o texto, remova a frase ou use o cargo do dossiê.
+  {% else %}
+  <strong>Tudo conferido com o dossiê.</strong> Revise o texto e gere o PDF.
+  {% endif %}
+  {% if checagem.alertas %}<br><small>{{ checagem.alertas }} alerta(s), que não impedem o PDF.</small>{% endif %}
+  {% for a in alertas %}<br><small>⚠ {{ a }}</small>{% endfor %}
+</article>
+
+<form method="post" action="/p/{{ perfil.slug }}/cvs/{{ cv.id }}" class="rascunho-cv">
+  <section class="cv-cabecalho">
+    <strong>{{ perfil.nome }}</strong><br>
+    <small>{{ cabecalho | join(" · ") or "Sem contato no dossiê: adicione na seção de contato." }}</small><br>
+    <small class="fato-meta">nome e contato vêm do dossiê e do perfil, sem passar pela IA</small>
+  </section>
+
+  <label>Título profissional</label>
+  {{ campo("titulo", r.titulo, 1) }}
+
+  {% if r.resumo %}<h2>{{ titulos.resumo }}</h2>{% endif %}
+  {% for f in r.resumo %}{{ campo("resumo." ~ loop.index0, f, 3) }}{% endfor %}
+
+  <h2>{{ titulos.experiencias }}</h2>
+  {% for e in r.experiencias %}
+  {% set i = loop.index0 %}{% set caminho = "experiencias." ~ i ~ ".titulo" %}
+  <div class="experiencia-cv" id="{{ caminho }}">
+    <input name="{{ caminho }}" value="{{ e.titulo }}" aria-label="Cargo">
+    <small class="fato-meta">{{ linhas_cargo[i][0] or "" }}{% if linhas_cargo[i][1] %} · {{ linhas_cargo[i][1] }}{% endif %} · do dossiê ({{ e.cargo_id }})</small>
+    {% for p in problemas.get(caminho, []) %}
+    <small class="falha">⛔ {{ p.mensagem }}</small>
+    <span class="acoes">
+      <button type="submit" name="acao" value="cargo_dossie:{{ i }}" class="outline secondary pequeno">Usar o do dossiê ({{ originais[i] }})</button>
+      {% if cv.idioma == "en" %}
+      <button type="submit" name="acao" value="cargo_confirmar:{{ i }}" class="pequeno">Confirmar "{{ e.titulo }}" como tradução</button>
+      {% endif %}
+    </span>
+    {% endfor %}
+    {% for b in e.bullets %}{{ campo("experiencias." ~ i ~ ".bullets." ~ loop.index0, b) }}{% endfor %}
+  </div>
+  {% endfor %}
+
+  {% for secao in SECOES_DE_FRASES if secao != "resumo" and r[secao] %}
+  <h2>{{ titulos[secao] }}</h2>
+  {% for f in r[secao] %}{{ campo(secao ~ "." ~ loop.index0, f, 1) }}{% endfor %}
+  {% endfor %}
+
+  <div class="acoes-importacao">
+    <button type="submit" name="acao" value="salvar" class="secondary">Salvar e conferir</button>
+    <button type="submit" name="acao" value="pdf" {% if checagem.bloqueios %}disabled{% endif %}>Gerar PDF</button>
+  </div>
+  <small>{% if chamada %}Redação: {{ chamada.custo_micro_usd | usd }}{% if chamada.cache_hit %} (do cache){% endif %} · {% endif %}
+    criado em {{ cv.criado_em | hora }}. Apagar o texto de uma frase também a remove.</small>
+  {% if vaga and dossie_mudou %}
+  <p><small>O dossiê mudou desde este rascunho.
+    <a href="/p/{{ perfil.slug }}/vagas/{{ vaga.id }}/cv?idioma={{ cv.idioma }}&novo=1">Gerar de novo com o dossiê atual</a>
+    (as edições deste rascunho ficam nele).</small></p>
+  {% endif %}
+</form>
+
+{% if cv.estado == "pronto" and cv.arquivo_pdf %}
+<article class="aviso sucesso-caixa">PDF pronto ({{ cv.paginas }} página(s)):
+  <a href="/p/{{ perfil.slug }}/cvs/{{ cv.id }}/pdf">baixar</a> · <small>guardado em <code>{{ cv.arquivo_pdf }}</code></small>
+  {% if cv.paginas and cv.paginas > 2 %}<br><small>⚠ Passou de 2 páginas: remova as frases menos ligadas à vaga e gere de novo.</small>{% endif %}</article>
+{% endif %}
+{% endblock %}

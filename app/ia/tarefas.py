@@ -5,6 +5,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 
+from app.cv.modelos import CVRedigido
 from app.dossie.modelos import Periodo, TipoFato, normalizar_tipo
 from app.perfis.modelos import Nivel
 
@@ -96,7 +97,45 @@ class AvaliacaoVaga(BaseModel):
 
 AVALIAR_VAGA = Tarefa(nome="avaliar_vaga", versao=1, nivel="forte", saida=AvaliacaoVaga)
 
-TAREFAS: dict[str, Tarefa] = {t.nome: t for t in [TESTAR_CONEXAO, EXTRAIR_FATOS, AVALIAR_VAGA]}
+
+class FatoParaCV(BaseModel):
+    id: str
+    tipo: str
+    texto: str
+    texto_en: str | None = None
+    empresa: str | None = None
+    periodo: str | None = None
+    metricas: dict[str, str | int | float] = Field(default_factory=dict)
+
+
+class CargoParaCV(BaseModel):
+    """Um cargo do CV: o código já decidiu a ordem; a IA escreve os bullets."""
+
+    cargo_id: str
+    cargo: str
+    cargo_en: str | None = None
+    empresa: str | None = None
+    periodo: str | None = None
+    fatos: list[str] = Field(default_factory=list)  # IDs candidatos a bullet, por relevância
+
+
+class EntradaCV(BaseModel):
+    """Sem contato e sem 🔒: o cabeçalho é montado localmente (regra 5)."""
+
+    idioma: Literal["pt", "en"]
+    vaga: str | None = None  # dado não confiável (regra 8)
+    cargos: list[CargoParaCV]
+    fatos: list[FatoParaCV]
+    frases_resumo: int
+    bullets_por_cargo: int
+    competencias: int
+
+
+REDIGIR_CV = Tarefa(nome="redigir_cv", versao=1, nivel="forte", saida=CVRedigido)
+
+TAREFAS: dict[str, Tarefa] = {
+    t.nome: t for t in [TESTAR_CONEXAO, EXTRAIR_FATOS, AVALIAR_VAGA, REDIGIR_CV]
+}
 
 
 def texto_da_entrada(entrada: str | BaseModel) -> str:

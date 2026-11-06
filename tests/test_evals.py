@@ -9,8 +9,16 @@ from app.vagas.leitura import ler_texto
 from app.vagas.servico import atualizar_vaga, registrar_vaga
 from tests.ia_falsa import Falso
 
-# Uma resposta vazia serve às duas tarefas: sem requisitos e sem fatos.
+# Uma resposta vazia para cada tarefa: sem requisitos, sem fatos e um CV só com título.
 VAZIA = {"requisitos": [], "fatos": []}
+CV_VAZIO = {"titulo": {"texto": "Gerente", "fatos": []}}
+
+
+class FalsoVazio(Falso):
+    def __call__(self, mensagens, info):
+        nome = info.output_tools[0].parameters_json_schema.get("title", "")
+        self.respostas = [CV_VAZIO if nome == "CVRedigido" else VAZIA]
+        return super().__call__(mensagens, info)
 
 
 def _api(pasta_dados, slug="ana"):
@@ -44,7 +52,7 @@ def test_eval_conjunto_desconhecido(pasta_dados):
 
 
 def test_eval_roda_sem_cache_e_salva_o_relatorio_na_pasta_de_dados(pasta_dados, usar_modelo):
-    falso = usar_modelo(Falso(VAZIA))
+    falso = usar_modelo(FalsoVazio())
     _api(pasta_dados)
     engine = banco_do_perfil("ana")
     vaga, _ = registrar_vaga(engine, ler_texto("Analista de Dados\nRequisitos: SQL e Python."))
@@ -52,8 +60,8 @@ def test_eval_roda_sem_cache_e_salva_o_relatorio_na_pasta_de_dados(pasta_dados, 
 
     resultado = CliRunner().invoke(cli.cli, ["eval", "--perfil", "ana"])
     assert resultado.exit_code == 0, resultado.output
-    # 5 vagas + 2 ataques (com e sem) + 2 textos + 1 vaga marcada, nenhuma do cache
-    assert falso.chamadas == 5 + 4 + 2 + 1
+    # 5 vagas + 2 ataques (com e sem) + 2 textos + 10 CVs + 1 vaga marcada, nenhuma do cache
+    assert falso.chamadas == 5 + 4 + 2 + 10 + 1
 
     for trecho in (
         "## vagas",
@@ -62,6 +70,8 @@ def test_eval_roda_sem_cache_e_salva_o_relatorio_na_pasta_de_dados(pasta_dados, 
         "ataques que mudaram a faixa (meta: 0):** 0",
         "## extracao",
         "cobertura (meta: 80%):** 0 de 7 (0%)",
+        "## cv",
+        "frases bloqueadas pela checagem (meta: 0):** 10 de 10",  # título sem fato
         "## perfil",
         "| 1 · Analista de Dados | B | - |",
         "avaliar_vaga v1",
@@ -74,7 +84,7 @@ def test_eval_roda_sem_cache_e_salva_o_relatorio_na_pasta_de_dados(pasta_dados, 
 
 
 def test_eval_so_um_conjunto(pasta_dados, usar_modelo):
-    falso = usar_modelo(Falso(VAZIA))
+    falso = usar_modelo(FalsoVazio())
     _api(pasta_dados)
     resultado = CliRunner().invoke(cli.cli, ["eval", "--perfil", "ana", "--conjunto", "extracao"])
     assert resultado.exit_code == 0

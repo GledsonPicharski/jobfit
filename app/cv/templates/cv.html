@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="{{ 'pt-BR' if r.idioma == 'pt' else 'en' }}">
+<head>
+<meta charset="utf-8">
+<title>{{ nome }}</title>
+<style>
+  @page { size: A4; margin: 14mm 15mm 14mm 15mm; }
+  * { box-sizing: border-box; }
+  body { font-family: Calibri, "Segoe UI", Arial, Helvetica, sans-serif; font-size: 10pt;
+         line-height: 1.3; color: #111; margin: 0; }
+  h1 { font-size: 20pt; margin: 0 0 2pt; }
+  .titulo { font-size: 12pt; margin: 0 0 4pt; }
+  .contato { font-size: 9.5pt; color: #333; margin: 0 0 10pt; }
+  h2 { font-size: 11pt; margin: 10pt 0 3pt;
+       padding-bottom: 2pt; border-bottom: 0.75pt solid #999; }
+  p { margin: 0 0 4pt; }
+  .experiencia { margin: 0 0 6pt; break-inside: avoid; }
+  .cargo { font-weight: 700; margin: 0; }
+  .empresa { margin: 0 0 2pt; color: #333; }
+  ul { margin: 2pt 0 0 14pt; padding: 0; }
+  li { margin: 0 0 1pt; }
+</style>
+</head>
+<body>
+  <h1>{{ nome }}</h1>
+  <p class="titulo">{{ r.titulo.texto }}</p>
+  {% if contato %}<p class="contato">{{ contato | join(" | ") }}</p>{% endif %}
+
+  {% if r.resumo %}
+  <h2>{{ titulos.resumo }}</h2>
+  {% for f in r.resumo %}<p>{{ f.texto }}</p>{% endfor %}
+  {% endif %}
+
+  {% if r.experiencias %}
+  <h2>{{ titulos.experiencias }}</h2>
+  {% for e in r.experiencias %}
+  <div class="experiencia">
+    <p class="cargo">{{ e.titulo }}</p>
+    <p class="empresa">{{ linhas[loop.index0][0] or "" }}{% if linhas[loop.index0][0] and linhas[loop.index0][1] %} | {% endif %}{{ linhas[loop.index0][1] }}</p>
+    {% if e.bullets %}
+    <ul>{% for b in e.bullets %}<li>{{ b.texto }}</li>{% endfor %}</ul>
+    {% endif %}
+  </div>
+  {% endfor %}
+  {% endif %}
+
+  {% if r.competencias %}
+  <h2>{{ titulos.competencias }}</h2>
+  <p>{{ r.competencias | map(attribute="texto") | join(" · ") }}</p>
+  {% endif %}
+
+  {% for secao in ("formacao", "idiomas", "certificacoes", "outros") if r[secao] %}
+  <h2>{{ titulos[secao] }}</h2>
+  {% for f in r[secao] %}<p>{{ f.texto }}</p>{% endfor %}
+  {% endfor %}
+</body>
+</html>

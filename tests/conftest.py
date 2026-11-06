@@ -73,3 +73,15 @@ def usar_modelo(monkeypatch):
         return falso
 
     return instalar
+
+
+@pytest.fixture
+def chromium():
+    """Pula o teste quando o Chromium do Playwright não está instalado nesta máquina."""
+    from pathlib import Path
+
+    from playwright.sync_api import sync_playwright
+
+    with sync_playwright() as p:
+        if not Path(p.chromium.executable_path).exists():
+            pytest.skip("Chromium do Playwright não instalado (uv run playwright install chromium)")

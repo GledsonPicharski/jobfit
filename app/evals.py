@@ -7,17 +7,21 @@ a pasta de dados, nunca para o repositório.
 """
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 
 import yaml
 from sqlalchemy import Engine
 
 from app.arquivos import gravar_texto, ler_texto
+from app.cv.checagem import checar, frases
+from app.cv.selecao import carregar_config as config_cv
+from app.cv.selecao import selecionar
+from app.cv.servico import montar_entrada, montar_rascunho
 from app.dossie.formato import ler_dossie
 from app.dossie.modelos import Fato
 from app.ia import executar
-from app.ia.tarefas import AVALIAR_VAGA, EXTRAIR_FATOS, EntradaExtracao
+from app.ia.tarefas import AVALIAR_VAGA, EXTRAIR_FATOS, REDIGIR_CV, EntradaExtracao
 from app.ingestao.extracao import candidatos_da_ia, mascarar
 from app.perfis.modelos import Perfil
 from app.textos import contem
@@ -26,7 +30,7 @@ from app.vagas.servico import julgar, listar_vagas, nota_dos_requisitos
 RAIZ = Path(__file__).resolve().parents[1]
 PASTA_EVALS = RAIZ / "exemplos" / "evals"
 DOSSIE_FICTICIO = RAIZ / "exemplos" / "perfil-ficticio" / "dossie.md"
-CONJUNTOS = ("vagas", "ataque", "extracao", "perfil")
+CONJUNTOS = ("vagas", "ataque", "extracao", "cv", "perfil")
 
 
 class ErroEval(ValueError):
@@ -110,6 +114,38 @@ async def eval_extracao(perfil: Perfil, engine: Engine) -> Resultado:
     return r
 
 
+async def eval_cv(perfil: Perfil, engine: Engine) -> Resultado:
+    """CVs em PT e EN para as vagas fictícias: quantas frases a checagem bloqueia (meta: 0)."""
+    r = Resultado("cv")
+    fatos = _fatos_ficticios()
+    por_id = {f.id: f for f in fatos}
+    config = config_cv()
+    total = bloqueadas = cargos_a_confirmar = 0
+    for caso in _yaml("vagas.yaml")["vagas"]:
+        selecao = selecionar(fatos, caso["texto"], set(), config, date.today())
+        for idioma in ("pt", "en"):
+            entrada = montar_entrada(selecao, idioma, caso["texto"], config)
+            saida = await executar(perfil, REDIGIR_CV, entrada, engine=engine, usar_cache=False)
+            rascunho, inventados = montar_rascunho(saida, selecao, idioma)
+            checagem = checar(rascunho, por_id)
+            caminhos = [c for c, _ in frases(rascunho)]
+            com_bloqueio = [
+                c for c in caminhos
+                if any(p.nivel == "bloqueio" for p in checagem.problemas.get(c, []))
+            ]  # fmt: skip
+            cargos = sum(1 for c in checagem.problemas if c.endswith(".titulo") and c != "titulo")
+            total += len(caminhos)
+            bloqueadas += len(com_bloqueio)
+            cargos_a_confirmar += cargos
+            r.linhas.append(
+                f"| {caso['nome']} | {idioma} | {len(caminhos)} | {len(com_bloqueio)} | "
+                f"{', '.join(inventados) or '-'} |"
+            )
+    r.metricas["frases bloqueadas pela checagem (meta: 0)"] = f"{bloqueadas} de {total}"
+    r.metricas["traduções de cargo a confirmar"] = str(cargos_a_confirmar)
+    return r
+
+
 async def eval_perfil(perfil: Perfil, engine: Engine, fatos: list[Fato]) -> Resultado:
     """As vagas em que a pessoa marcou a faixa, reavaliadas sem cache contra o dossiê atual."""
     r = Resultado("perfil")
@@ -129,6 +165,7 @@ _CABECALHOS = {
     "vagas": "| caso | esperada | JobFit |\n| --- | --- | --- |",
     "ataque": "| ataque | sem ataque | com ataque | |\n| --- | --- | --- | --- |",
     "extracao": "| texto | fatos | esperados que faltaram |\n| --- | --- | --- |",
+    "cv": "| vaga | idioma | frases | bloqueadas | IDs inventados |\n" + "| --- " * 5 + "|",
     "perfil": "| vaga | sua faixa | JobFit |\n| --- | --- | --- |",
 }
 
@@ -140,7 +177,7 @@ def relatorio(perfil: Perfil, resultados: list[Resultado]) -> str:
         "",
         f"Provedor: {ia.provedor} · modelos: barato `{ia.modelos['barato']}`, "
         f"forte `{ia.modelos['forte']}` · prompts: avaliar_vaga v{AVALIAR_VAGA.versao}, "
-        f"extrair_fatos v{EXTRAIR_FATOS.versao}",
+        f"extrair_fatos v{EXTRAIR_FATOS.versao}, redigir_cv v{REDIGIR_CV.versao}",
     ]
     for r in resultados:
         partes += ["", f"## {r.conjunto}", ""]
@@ -164,6 +201,8 @@ async def rodar(
         resultados.append(await eval_ataques(perfil, engine))
     if "extracao" in conjuntos:
         resultados.append(await eval_extracao(perfil, engine))
+    if "cv" in conjuntos:
+        resultados.append(await eval_cv(perfil, engine))
     if "perfil" in conjuntos:
         resultados.append(await eval_perfil(perfil, engine, fatos_do_perfil))
     return resultados

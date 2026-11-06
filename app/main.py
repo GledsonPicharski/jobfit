@@ -1,4 +1,3 @@
-from pathlib import Path
 from urllib.parse import quote, urlsplit
 
 from fastapi import FastAPI, Request
@@ -6,10 +5,9 @@ from fastapi.responses import RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from app.ia import AguardandoResposta
-from app.web import rotas, rotas_dossie, rotas_importacao, rotas_vagas
+from app.web import rotas, rotas_cv, rotas_dossie, rotas_importacao, rotas_vagas
+from app.web.rotas import PASTA_STATIC
 from app.web.seguranca import ProtecaoLocal
-
-PASTA_STATIC = Path(__file__).parent / "web" / "static"
 
 
 def _de_onde_veio(request: Request) -> str:
@@ -28,6 +26,7 @@ def create_app() -> FastAPI:
     app.include_router(rotas_dossie.router)
     app.include_router(rotas_importacao.router)
     app.include_router(rotas_vagas.router)
+    app.include_router(rotas_cv.router)
 
     @app.exception_handler(rotas.PastaNaoConfigurada)
     async def pedir_pasta(_request: Request, _erro: rotas.PastaNaoConfigurada):
