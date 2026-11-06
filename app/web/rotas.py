@@ -39,6 +39,7 @@ from app.perfis.servico import (
     listar_perfis,
     salvar_perfil,
 )
+from app.vagas.servico import listar_vagas
 from app.web.formatos import formatar_hora_local, formatar_usd, ler_decimal
 
 PASTA_TEMPLATES = Path(__file__).parent / "templates"
@@ -172,6 +173,7 @@ def inicio_do_perfil(request: Request, pasta: Pasta, perfil: PerfilAtual):
             "falta_chave": perfil.ia.precisa_chave
             and not tem_chave(perfil.slug, perfil.ia.provedor),
             "pendentes": pedidos_pendentes(engine),
+            "vagas": listar_vagas(engine)[:5],
         },
     )
 

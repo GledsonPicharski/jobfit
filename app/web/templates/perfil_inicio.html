@@ -45,7 +45,22 @@
 
 <article>
   <header><strong>Vagas</strong></header>
-  <p><small>Avaliar vagas contra o seu dossiê chega na próxima fase. O que você responder
-    nas avaliações ("eu tenho isso", "isso está errado") vai alimentar o dossiê.</small></p>
+  <form method="post" action="/p/{{ perfil.slug }}/vagas">
+    <textarea name="entrada" rows="2" required placeholder="Cole o link ou o texto de uma vaga"></textarea>
+    <button type="submit">Avaliar</button>
+  </form>
+  {% if vagas %}
+  <ul>
+    {% for vaga, av in vagas %}
+    <li>{% if av and av.faixa %}<span class="faixa faixa-{{ av.faixa }}">{{ av.faixa }}</span> {% endif %}
+      <a href="/p/{{ perfil.slug }}/vagas/{{ vaga.id }}">{{ vaga.titulo or "Vaga sem título" }}</a>
+      {% if vaga.empresa %}<small>· {{ vaga.empresa }}</small>{% endif %}
+      {% if av and av.bloqueada %}<small>· barrada pelos filtros</small>{% endif %}</li>
+    {% endfor %}
+  </ul>
+  <a href="/p/{{ perfil.slug }}/vagas">Todas as vagas</a>
+  {% else %}
+  <p><small>O que você responder nas avaliações ("eu tenho isso", "não tenho") alimenta o dossiê.</small></p>
+  {% endif %}
 </article>
 {% endblock %}

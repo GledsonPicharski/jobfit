@@ -62,3 +62,18 @@ def test_datas_voltam_em_utc():
         lido = sessao.exec(select(ChamadaIA)).one().criado_em
     assert lido == momento
     assert lido.tzinfo == UTC
+
+
+def test_migracoes_batem_com_os_modelos():
+    """Tabela ou coluna nova no modelo sem migração (ou o contrário) quebra aqui."""
+    from alembic.autogenerate import compare_metadata
+    from alembic.migration import MigrationContext
+    from sqlmodel import SQLModel
+
+    import app.dossie.tabelas  # noqa: F401
+    import app.vagas.tabelas  # noqa: F401
+
+    engine = banco_do_perfil("ana")
+    with engine.connect() as conexao:
+        diferencas = compare_metadata(MigrationContext.configure(conexao), SQLModel.metadata)
+    assert diferencas == []

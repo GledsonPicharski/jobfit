@@ -96,3 +96,11 @@ Os dois usuários usam Windows. Desenvolver e testar pensando nele:
 - O dossiê real é mais rico que as fontes. Comparar pelo texto inteiro propõe de novo o que já está lá. Compare pela identidade de cada tipo (`_ja_registrado`) e calibre com os dados reais antes de dar por pronto.
 - Calibrar com dado real vale a pena: o PDF real do LinkedIn tinha rótulos cinza, `&amp;` e parágrafos quebrados entre páginas, e o fictício não tinha nada disso. Leia o real só em pasta temporária, nunca no repositório.
 - Teste que depende de data usa `date.today()` e não o fuso, e não supõe a codificação do console (`PYTHONIOENCODING=utf-8` ao imprimir acento).
+
+**Fase 3**
+
+- O ecossistema instalado usa `httpx2` (é o que o Pydantic AI importa), não `httpx`. No selectolax 1.0 o parser é `selectolax.lexbor.LexborHTMLParser`. Confira antes de escrever.
+- `uv add` com o app aberto falha no meio da sincronização. Use `uv add --no-sync` e, se precisar do pacote já, `uv pip install`.
+- `sem_acento` apaga pontuação fora do ASCII (o travessão "—") e desloca as posições. Nunca recorte o texto original com posições achadas no texto normalizado.
+- Teste com dado público real cedo: uma vaga real do Greenhouse revelou o salário anual escrito antes do valor ("Annual Salary:") e o travessão entre os valores.
+- Teste `async` usa `pytestmark = pytest.mark.anyio` e a fixture `anyio_backend` devolvendo "asyncio".

@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block titulo %}Vagas · {{ perfil.nome }} · JobFit{% endblock %}
+{% block conteudo %}
+<h1>Vagas</h1>
+
+<article>
+  <form method="post" action="/p/{{ perfil.slug }}/vagas">
+    <label>Avaliar uma vaga
+      <textarea name="entrada" rows="4" required placeholder="Cole o link da vaga (Gupy, Greenhouse, Lever, site da empresa) ou o texto dela. Do LinkedIn, cole o texto.">{{ entrada }}</textarea>
+    </label>
+    {% if erro %}<p class="falha">{{ erro }}</p>{% endif %}
+    <button type="submit">Avaliar</button>
+    <small>Filtros dos seus <a href="/p/{{ perfil.slug }}/criterios">critérios de vaga</a> rodam antes, sem gastar IA.
+      A nota é calculada em código a partir do julgamento da IA sobre cada requisito.</small>
+  </form>
+</article>
+
+{% if vagas %}
+<div class="overflow-auto">
+<table class="vagas">
+  <thead><tr><th>Vaga</th><th>Nota</th><th>Situação</th><th>Quando</th></tr></thead>
+  <tbody>
+    {% for vaga, av in vagas %}
+    <tr>
+      <td><a href="/p/{{ perfil.slug }}/vagas/{{ vaga.id }}">{{ vaga.titulo or "Vaga sem título" }}</a>
+        {% if vaga.empresa %}<br><small>{{ vaga.empresa }}</small>{% endif %}</td>
+      <td>
+        {% if av and av.bloqueada %}<small>barrada pelos filtros</small>
+        {% elif av and av.faixa %}<span class="faixa faixa-{{ av.faixa }}">{{ av.faixa }}</span> {{ av.nota }}
+        {% else %}<small>aguardando avaliação</small>{% endif %}
+      </td>
+      <td>{{ ESTADOS_VAGA.get(vaga.estado, vaga.estado) }}</td>
+      <td><small>{{ vaga.criado_em | hora }}</small></td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<p>Nenhuma vaga ainda. Cole o link ou o texto de uma vaga acima.</p>
+{% endif %}
+
+{% if concordancia %}
+<h2>Concordância</h2>
+<p>Nas vagas em que você marcou a faixa, a do JobFit bate em <strong>{{ acertos }} de {{ concordancia | length }}</strong>
+  ({{ (100 * acertos / concordancia | length) | round | int }}%).
+  <small>A meta da fase: 80% em 20 vagas. Onde não bate:
+  {% for vaga, app, sua in concordancia if app != sua %}<a href="/p/{{ perfil.slug }}/vagas/{{ vaga.id }}">{{ vaga.titulo or "vaga" }}</a> (você {{ sua }}, JobFit {{ app }}){% if not loop.last %}, {% endif %}{% else %}nenhuma.{% endfor %}</small></p>
+{% endif %}
+
+{% if lacunas %}
+<h2>Lacunas recorrentes</h2>
+<p><small>O que você disse que não tem, nas vagas avaliadas: o que mais aparece é o que mais vale estudar.</small></p>
+<ul>
+  {% for texto, vagas_da_lacuna in lacunas %}
+  <li><strong>{{ texto }}</strong> <small>· {{ vagas_da_lacuna | length }} vaga(s):
+    {% for v in vagas_da_lacuna %}<a href="/p/{{ perfil.slug }}/vagas/{{ v.id }}">{{ v.titulo or "vaga" }}</a>{% if not loop.last %}, {% endif %}{% endfor %}</small></li>
+  {% endfor %}
+</ul>
+{% endif %}
+{% endblock %}

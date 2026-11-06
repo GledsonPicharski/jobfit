@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block titulo %}Critérios de vaga · {{ perfil.nome }} · JobFit{% endblock %}
+{% block conteudo %}
+<h1>Critérios de vaga</h1>
+<p>Filtros aplicados em código antes de qualquer IA: uma vaga fora deles é barrada sem gastar
+  nada, e você ainda pode avaliá-la se quiser. Campo vazio quer dizer "qualquer um".</p>
+{% if salvo %}<p class="sucesso">Critérios salvos.</p>{% endif %}
+{% if erro %}<p class="falha">{{ erro }}</p>{% endif %}
+
+<form method="post" action="/p/{{ perfil.slug }}/criterios">
+  <fieldset>
+    <legend>Modalidades que você aceita</legend>
+    {% for valor, rotulo in MODALIDADES.items() %}
+    <label><input type="checkbox" name="modalidades" value="{{ valor }}" {% if valor in c.modalidades %}checked{% endif %}> {{ rotulo }}</label>
+    {% endfor %}
+  </fieldset>
+
+  <label>Cidades aceitas para híbrido e presencial
+    <textarea name="cidades" rows="2" placeholder="Uma por linha. Vazio: qualquer cidade.">{{ c.cidades | join("\n") }}</textarea>
+  </label>
+
+  <fieldset>
+    <legend>Senioridades que você busca <small>(fora delas, a vaga só ganha um alerta)</small></legend>
+    {% for valor, rotulo in SENIORIDADES.items() %}
+    <label><input type="checkbox" name="senioridades" value="{{ valor }}" {% if valor in c.senioridades %}checked{% endif %}> {{ rotulo }}</label>
+    {% endfor %}
+  </fieldset>
+
+  <label>Salário mínimo mensal, em reais
+    <input name="salario_minimo" inputmode="decimal" value="{{ '%d' | format(c.salario_minimo) if c.salario_minimo else '' }}">
+    <small>Privado: fica só no seu computador e nunca vai para a IA. Só barra vagas que informam salário.</small>
+  </label>
+
+  <label>Empresas a evitar
+    <textarea name="empresas_evitar" rows="2" placeholder="Uma por linha">{{ c.empresas_evitar | join("\n") }}</textarea>
+  </label>
+  <label>Palavras a evitar na descrição
+    <textarea name="palavras_evitar" rows="2" placeholder="Ex.: mercado imobiliário (uma por linha)">{{ c.palavras_evitar | join("\n") }}</textarea>
+  </label>
+
+  <button type="submit">Salvar critérios</button>
+</form>
+{% endblock %}

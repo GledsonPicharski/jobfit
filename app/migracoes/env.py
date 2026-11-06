@@ -14,6 +14,7 @@ from sqlmodel import SQLModel
 
 import app.dossie.tabelas  # noqa: F401  (registra as tabelas no metadata)
 import app.ia.modelos  # noqa: F401
+import app.vagas.tabelas  # noqa: F401
 
 alvo = SQLModel.metadata
 

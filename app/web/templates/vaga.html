@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+{% block titulo %}{{ vaga.titulo or "Vaga" }} · {{ perfil.nome }} · JobFit{% endblock %}
+{% block conteudo %}
+{% macro requisito(r) %}
+<li class="requisito decisao-{{ r.decisao }}" id="requisito-{{ r.posicao }}">
+  <div>
+    <strong>{{ r.texto }}</strong>
+    <small class="fato-meta">
+      {{ "obrigatório" if r.peso == "obrigatorio" else "desejável" }} ·
+      {{ DECISOES_REQUISITO.get(r.decisao, r.decisao) }}
+      {% if r.ajuste %} · você disse: {{ ACOES_REQUISITO[r.ajuste] | lower }}{% endif %}
+    </small>
+    {% if r.justificativa %}<small>{{ r.justificativa }}</small>{% endif %}
+    {% if r.fatos %}
+    <small class="fatos-citados">Fatos:
+      {% for fid in r.fatos %}<a href="/p/{{ perfil.slug }}/dossie#{{ fid }}" title="{{ atuais[fid].texto if fid in atuais else 'fato removido do dossiê' }}">{{ fid }}</a>{% if not loop.last %}, {% endif %}{% endfor %}
+    </small>
+    {% endif %}
+    {% if r.alerta %}<small class="falha">⚠ {{ r.alerta }}</small>{% endif %}
+    <details><summary><small>trecho da vaga</small></summary><blockquote><small>{{ r.trecho }}</small></blockquote></details>
+    {% set base = "/p/" ~ perfil.slug ~ "/vagas/" ~ vaga.id ~ "/requisitos/" ~ r.posicao %}
+    {% if r.ajuste %}
+    <form method="post" action="{{ base }}/desfazer" class="em-linha">
+      <button type="submit" class="outline secondary pequeno">Desfazer{% if r.ajuste == "tenho" %} (tira o fato do dossiê){% endif %}</button>
+    </form>
+    {% elif r.decisao in ("nao_atende", "nao_sei") %}
+    <details class="tenho">
+      <summary><small><strong>Eu tenho isso</strong></small></summary>
+      <form method="post" action="{{ base }}/tenho">
+        <textarea name="texto" rows="2" required placeholder="Conte em uma frase o que você fez ou sabe (vira um fato do seu dossiê)"></textarea>
+        <div class="grid">
+          <select name="tipo" aria-label="Tipo do fato">
+            {% for valor, rotulo in TIPOS.items() if valor not in ("contato", "lacuna", "resposta_padrao") %}
+            <option value="{{ valor }}" {% if valor == TIPO_DA_CATEGORIA.get(r.categoria) %}selected{% endif %}>{{ rotulo }}</option>
+            {% endfor %}
+          </select>
+          <input name="empresa" placeholder="Empresa (se for de um emprego)">
+        </div>
+        <button type="submit" class="pequeno">Adicionar ao dossiê</button>
+      </form>
+    </details>
+    <form method="post" action="{{ base }}/ajuste" class="em-linha">
+      <input type="hidden" name="acao" value="nao_tenho">
+      <button type="submit" class="outline secondary pequeno">Não tenho</button>
+    </form>
+    <form method="post" action="{{ base }}/ajuste" class="em-linha">
+      <input type="hidden" name="acao" value="nao_se_aplica">
+      <button type="submit" class="outline secondary pequeno">Não se aplica</button>
+    </form>
+    {% else %}
+    <form method="post" action="{{ base }}/ajuste" class="em-linha">
+      <input type="hidden" name="acao" value="nao_e_bem_assim">
+      <button type="submit" class="outline secondary pequeno">Não é bem assim</button>
+    </form>
+    <form method="post" action="{{ base }}/ajuste" class="em-linha">
+      <input type="hidden" name="acao" value="nao_se_aplica">
+      <button type="submit" class="outline secondary pequeno">Não se aplica</button>
+    </form>
+    {% endif %}
+  </div>
+</li>
+{% endmacro %}
+<p><small><a href="/p/{{ perfil.slug }}/vagas">← Vagas</a></small></p>
+<h1>{{ vaga.titulo or "Vaga sem título" }}</h1>
+<p>
+  {% if vaga.empresa %}<strong>{{ vaga.empresa }}</strong> · {% endif %}
+  {% if meta.modalidade %}{{ MODALIDADES[meta.modalidade] }} · {% endif %}
+  {% if meta.local %}{{ meta.local }} · {% endif %}
+  {% if meta.senioridade %}{{ SENIORIDADES[meta.senioridade] }} · {% endif %}
+  {% if meta.ingles %}inglês {{ NIVEIS_INGLES[meta.ingles] }} · {% endif %}
+  {% if vaga.url %}<a href="{{ vaga.url }}" target="_blank" rel="noopener noreferrer">abrir a vaga</a>{% else %}texto colado{% endif %}
+</p>
+
+{% if adicionado %}<article class="aviso sucesso-caixa">Adicionado ao dossiê como
+  <a href="/p/{{ perfil.slug }}/dossie#{{ adicionado }}">{{ adicionado }}</a>, e a nota foi recalculada,
+  sem nova chamada de IA. Para tirar, use "Desfazer" no requisito.</article>{% endif %}
+{% if repetida %}<article class="aviso">Você já tinha trazido esta vaga; esta é a avaliação que existe.</article>{% endif %}
+{% if erro %}<article class="aviso falha"><p>{{ erro }}</p>
+  <a href="/p/{{ perfil.slug }}/vagas/{{ vaga.id }}/avaliar" role="button" class="secondary">Tentar de novo</a></article>{% endif %}
+
+{% if filtros and (filtros.bloqueios or filtros.alertas) %}
+<article class="aviso{% if avaliacao.bloqueada %} falha{% endif %}">
+  {% for b in filtros.bloqueios %}<p>⛔ {{ b }}</p>{% endfor %}
+  {% for a in filtros.alertas %}<p>⚠ {{ a }}</p>{% endfor %}
+  {% if avaliacao.bloqueada %}
+  <p><small>Barrada pelos seus critérios, sem gastar IA.</small></p>
+  <a href="/p/{{ perfil.slug }}/vagas/{{ vaga.id }}/avaliar?forcar=1" role="button" class="secondary">Avaliar mesmo assim</a>
+  {% endif %}
+</article>
+{% endif %}
+
+{% if not avaliacao and not erro %}
+<a href="/p/{{ perfil.slug }}/vagas/{{ vaga.id }}/avaliar" role="button">Avaliar</a>
+{% endif %}
+
+{% if avaliacao and not avaliacao.bloqueada %}
+<article class="nota">
+  {% if avaliacao.faixa %}
+  <p class="nota-valor"><span class="faixa faixa-{{ avaliacao.faixa }}">{{ avaliacao.faixa }}</span> {{ avaliacao.nota }}<small>/100</small></p>
+  <p>{% if avaliacao.recomenda %}Vale a candidatura.{% else %}Abaixo do corte: o JobFit não recomenda, mas a decisão é sua.{% endif %}
+    <small>{{ forcas | length }} força(s) · {{ lacunas | length }} lacuna(s){% if fora %} · {{ fora | length }} fora da nota{% endif %}</small></p>
+  {% else %}
+  <p>A IA não achou requisitos nesta vaga. Confira a descrição abaixo.</p>
+  {% endif %}
+  <small>
+    {% if chamada %}custo: {{ chamada.custo_micro_usd | usd }}{% if chamada.cache_hit %} (do cache){% endif %} · {% endif %}
+    avaliada em {{ avaliacao.criado_em | hora }}
+    {% if dossie_mudou %} · o dossiê mudou desde então: <a href="/p/{{ perfil.slug }}/vagas/{{ vaga.id }}/avaliar">reavaliar</a>{% endif %}
+  </small>
+  {% for a in alertas %}<p><small class="falha">⚠ {{ a }}</small></p>{% endfor %}
+</article>
+
+{% if lacunas %}
+<h2>Lacunas</h2>
+<ul class="requisitos">{% for r in lacunas %}{{ requisito(r) }}{% endfor %}</ul>
+{% endif %}
+
+{% if forcas %}
+<h2>Forças</h2>
+<ul class="requisitos">{% for r in forcas %}{{ requisito(r) }}{% endfor %}</ul>
+{% endif %}
+
+{% if fora %}
+<h2>Fora da nota</h2>
+<ul class="requisitos">{% for r in fora %}{{ requisito(r) }}{% endfor %}</ul>
+{% endif %}
+{% endif %}
+
+{% if avaliacao and avaliacao.faixa %}
+<form method="post" action="/p/{{ perfil.slug }}/vagas/{{ vaga.id }}/faixa" class="faixa-esperada">
+  <small>Qual faixa você daria a esta vaga?</small>
+  {% for f in ("A", "B", "C", "D") %}
+  <button type="submit" name="faixa" value="{{ f }}" class="pequeno {% if vaga.faixa_esperada != f %}outline{% endif %}">{{ f }}</button>
+  {% endfor %}
+  {% if vaga.faixa_esperada %}
+  <small>{% if vaga.faixa_esperada == avaliacao.faixa %}bate com o JobFit{% else %}o JobFit deu {{ avaliacao.faixa }}{% endif %}</small>
+  {% endif %}
+</form>
+{% endif %}
+
+<div class="acoes-importacao">
+  {% for estado, rotulo in ESTADOS_VAGA.items() if estado != vaga.estado %}
+  <form method="post" action="/p/{{ perfil.slug }}/vagas/{{ vaga.id }}/estado">
+    <input type="hidden" name="estado" value="{{ estado }}">
+    <button type="submit" class="{% if estado != 'quero_aplicar' %}outline secondary{% endif %}">{{ rotulo }}</button>
+  </form>
+  {% endfor %}
+</div>
+<p><small>Situação: {{ ESTADOS_VAGA.get(vaga.estado, vaga.estado) }}</small></p>
+
+<details>
+  <summary>Descrição completa da vaga</summary>
+  <pre class="texto-vaga">{{ vaga.texto }}</pre>
+  <small>Cópia guardada em {{ vaga.criado_em | hora }}: continua aqui mesmo se a vaga sair do ar.</small>
+</details>
+{% endblock %}
