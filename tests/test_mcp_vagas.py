@@ -120,3 +120,33 @@ async def test_no_modo_api_avalia_direto_e_avisa_o_custo(pasta_dados, usar_model
     async with Client(criar_servidor("ana")) as mcp:
         resultado = _texto(await mcp.call_tool("avaliar_vaga", {"vaga": VAGA}))
     assert "80/100" in resultado and "modo API" in resultado
+
+
+async def test_tela_do_pedido_avisa_e_segue_quando_o_claude_responde(pasta_dados):
+    import os
+    from pathlib import Path
+
+    from app.mcp.instalacao import instalar
+
+    _perfil(pasta_dados, "ana")
+    cliente = TestClient(create_app(), base_url=ORIGEM, headers={"Origin": ORIGEM})
+    cliente.post("/p/ana/vagas", data={"entrada": VAGA})
+    destino = cliente.get("/p/ana/vagas/1/avaliar", follow_redirects=False).headers["location"]
+    pedido_id = urlsplit(destino).path.rsplit("/", 1)[1]
+    estado = f"/p/ana/pedidos/{pedido_id}/estado?voltar=/p/ana/vagas/1/avaliar"
+
+    assert "Pelo Claude Desktop" not in cliente.get(destino).text  # ainda não conectado
+    instalar(Path(os.environ["JOBFIT_CLAUDE_CONFIG"]), "ana")
+    tela = cliente.get(destino).text
+    assert f"responda o pedido {pedido_id} do JobFit" in tela and 'hx-trigger="every 3s"' in tela
+
+    pendente = cliente.get(estado)
+    assert pendente.status_code == 204 and "HX-Redirect" not in pendente.headers
+    async with Client(criar_servidor("ana")) as mcp:
+        await mcp.call_tool("responder_pedido", {"pedido_id": pedido_id, "resposta": SAIDA})
+    assert cliente.get(estado).headers["HX-Redirect"] == "/p/ana/vagas/1/avaliar"
+    # voltar de fora do perfil não é seguido
+    fora = cliente.get(f"/p/ana/pedidos/{pedido_id}/estado?voltar=https://exemplo.test/")
+    assert fora.headers["HX-Redirect"] == f"/p/ana/pedidos/{pedido_id}"
+
+    assert "1 pelo Claude Desktop" in cliente.get("/p/ana/custos").text

@@ -20,6 +20,11 @@
   </article>
 </section>
 
+{% if respostas %}
+<p><small>Pedidos do modo manual respondidos, sem custo:
+  {% for origem, total in respostas.items() %}{{ total }} {{ ORIGENS.get(origem, origem) }}{% if not loop.last %} · {% endif %}{% endfor %}</small></p>
+{% endif %}
+
 <h2>Chamadas recentes</h2>
 {% if recentes %}
 <div class="overflow-auto">

@@ -27,7 +27,14 @@ from app.ia import (
 )
 from app.ia.chaves import salvar_chave, tem_chave
 from app.ia.custos import gasto_do_dia, gasto_do_mes, para_micro_usd
-from app.ia.manual import cancelar_pedido, obter_pedido, pedidos_pendentes, responder_pedido
+from app.ia.manual import (
+    ORIGENS,
+    cancelar_pedido,
+    obter_pedido,
+    pedidos_pendentes,
+    responder_pedido,
+    respostas_por_origem,
+)
 from app.ia.modelos import ChamadaIA, PedidoIA
 from app.ia.tarefas import TESTAR_CONEXAO
 from app.mcp import instalacao
@@ -201,6 +208,8 @@ def custos(request: Request, perfil: PerfilAtual):
             "gasto_mes": gasto_do_mes(engine),
             "teto_micro": para_micro_usd(perfil.ia.teto_diario_usd),
             "recentes": recentes,
+            "respostas": respostas_por_origem(engine),
+            "ORIGENS": ORIGENS,
         },
     )
 
@@ -352,10 +361,12 @@ def _obter_pedido(perfil: Perfil, pedido_id: str) -> PedidoIA:
 def _tela_pedido(
     request: Request, perfil: Perfil, pedido: PedidoIA, status_code: int = 200, **extra
 ) -> HTMLResponse:
+    arquivo_claude = instalacao.achar_config()
+    ligado = arquivo_claude is not None and instalacao.conectado(arquivo_claude) == perfil.slug
     return templates.TemplateResponse(
         request,
         "pedido.html",
-        {"perfil": perfil, "pedido": pedido, **extra},
+        {"perfil": perfil, "pedido": pedido, "claude_conectado": ligado, **extra},
         status_code=status_code,
     )
 
@@ -364,6 +375,16 @@ def _tela_pedido(
 def ver_pedido(request: Request, perfil: PerfilAtual, pedido_id: str, voltar: str = ""):
     pedido = _obter_pedido(perfil, pedido_id)
     return _tela_pedido(request, perfil, pedido, voltar=voltar_seguro(perfil.slug, voltar) or "")
+
+
+@router.get("/p/{slug}/pedidos/{pedido_id}/estado")
+def estado_do_pedido(perfil: PerfilAtual, pedido_id: str, voltar: str = ""):
+    """A tela do pedido pergunta a cada poucos segundos: respondido pelo Claude Desktop, segue."""
+    pedido = _obter_pedido(perfil, pedido_id)
+    if pedido.status == "pendente":
+        return Response(status_code=204)
+    destino = voltar_seguro(perfil.slug, voltar) or f"/p/{perfil.slug}/pedidos/{pedido.id}"
+    return Response(headers={"HX-Redirect": destino})
 
 
 @router.get("/p/{slug}/pedidos/{pedido_id}/pacote.md")

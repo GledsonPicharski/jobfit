@@ -225,3 +225,15 @@ def cancelar_pedido(engine: Engine, pedido_id: str) -> None:
         pedido.status = "cancelado"
         sessao.add(pedido)
         sessao.commit()
+
+
+def respostas_por_origem(engine: Engine) -> dict[str, int]:
+    """Quantos pedidos foram respondidos por cada caminho (antes da 0008, conta como chat)."""
+    with Session(engine) as sessao:
+        respondidos = sessao.exec(
+            select(PedidoIA.respondido_por).where(PedidoIA.status == "respondido")
+        ).all()
+    contagem: dict[str, int] = {}
+    for origem in respondidos:
+        contagem[origem or "chat"] = contagem.get(origem or "chat", 0) + 1
+    return contagem
