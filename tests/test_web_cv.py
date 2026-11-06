@@ -137,12 +137,9 @@ def test_cv_em_ingles_confirma_a_traducao_do_cargo(cliente, ana_api, pasta_dados
     cliente.post("/p/ana/cvs/1", data={"acao": "cargo_confirmar:0"})
     doc = ler_dossie(caminho_dossie(pasta_dados, "ana").read_text(encoding="utf-8"))
     assert doc.fato("F-010").model_extra["cargo_en"] == "Data & AI Manager"
-    assert (
-        "Tradução do cargo pela IA: confirme"
-        not in cliente.get("/p/ana/cvs/1")
-        .text.split("Experience")[1]
-        .split("Senior Data Analyst")[0]
-    )
+    tela = cliente.get("/p/ana/cvs/1").text
+    assert 'value="cargo_confirmar:0"' not in tela  # confirmado
+    assert 'value="cargo_confirmar:1"' in tela  # o outro cargo ainda espera
 
 
 def test_modo_manual_volta_para_o_cv(cliente, ana, usar_modelo):
@@ -176,3 +173,43 @@ def test_modo_manual_volta_para_o_cv(cliente, ana, usar_modelo):
 def test_cv_inexistente(cliente, ana):
     assert cliente.get("/p/ana/cvs/9").status_code == 404
     assert cliente.get("/p/ana/vagas/9/cv").status_code == 404
+
+
+def test_gerar_pdf_e_baixar(cliente, ana_api, usar_modelo, pasta_dados, chromium):
+    usar_modelo(FalsoPorTarefa())
+    _vaga_avaliada(cliente)
+    _cv(cliente)
+    resposta = cliente.post("/p/ana/cvs/1", data={"acao": "pdf"}, follow_redirects=False)
+    assert resposta.status_code == 303
+    cv = obter_cv(banco_do_perfil("ana"), 1)
+    assert cv.estado == "pronto" and cv.paginas == 1
+    assert cv.arquivo_pdf.startswith("cvs/") and cv.arquivo_pdf.endswith("_pt.pdf")
+    assert (pasta_dados / "perfis" / "ana" / cv.arquivo_pdf).is_file()
+    assert "PDF pronto (1 página(s))" in cliente.get("/p/ana/cvs/1").text
+
+    baixado = cliente.get("/p/ana/cvs/1/pdf")
+    assert baixado.headers["content-type"] == "application/pdf"
+    assert baixado.content.startswith(b"%PDF")
+
+
+def test_pdf_com_bloqueio_nao_e_gerado(cliente, ana_api, usar_modelo, pasta_dados):
+    usar_modelo(FalsoPorTarefa())
+    _vaga_avaliada(cliente)
+    _cv(cliente)
+    resposta = cliente.post(
+        "/p/ana/cvs/1",
+        data={"experiencias.0.bullets.0": "Automatizou 95% das leituras.", "acao": "pdf"},
+    )
+    assert resposta.status_code == 409
+    assert "o PDF não foi gerado" in resposta.text
+    assert obter_cv(banco_do_perfil("ana"), 1).estado == "rascunho"
+    assert cliente.get("/p/ana/cvs/1/pdf").status_code == 404
+
+
+def test_editar_depois_do_pdf_volta_a_rascunho(cliente, ana_api, usar_modelo, chromium):
+    usar_modelo(FalsoPorTarefa())
+    _vaga_avaliada(cliente)
+    _cv(cliente)
+    cliente.post("/p/ana/cvs/1", data={"acao": "pdf"})
+    cliente.post("/p/ana/cvs/1", data={"resumo.0": "Lidera dados e IA desde 2023."})
+    assert obter_cv(banco_do_perfil("ana"), 1).estado == "rascunho"

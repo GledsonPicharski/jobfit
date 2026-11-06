@@ -24,4 +24,6 @@ jobs:
       - run: uv run ruff format --check .
       - name: Dados pessoais
         run: uv run python scripts/checar_dados_pessoais.py
+      - name: Chromium para o PDF do CV
+        run: uv run playwright install --with-deps chromium
       - run: uv run pytest

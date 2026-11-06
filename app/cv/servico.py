@@ -9,6 +9,7 @@ from sqlmodel import Session, select
 
 from app.cv.checagem import Checagem, checar, limpar_ids
 from app.cv.modelos import CVRedigido, Experiencia, Idioma, Rascunho
+from app.cv.render import TITULOS_SECAO, ErroPDF, gerar_pdf, html_do_cv
 from app.cv.selecao import ConfigCV, Selecao, carregar_config, periodo_legivel, selecionar
 from app.cv.tabelas import CV
 from app.dossie.filtros import fatos_publicaveis
@@ -18,6 +19,7 @@ from app.dossie.versoes import alterar_dossie
 from app.ia import executar_detalhado
 from app.ia.modelos import ChamadaIA, agora_utc
 from app.ia.tarefas import REDIGIR_CV, CargoParaCV, EntradaCV, FatoParaCV
+from app.ingestao.arquivos import nome_seguro
 from app.perfis.modelos import Perfil
 from app.vagas.servico import efetivos, ultima_avaliacao
 from app.vagas.tabelas import Vaga
@@ -245,3 +247,42 @@ def custo(engine: Engine, cv: CV) -> ChamadaIA | None:
         return None
     with Session(engine) as sessao:
         return sessao.get(ChamadaIA, cv.chamada_id)
+
+
+def cabecalho(doc: Documento) -> list[str]:
+    """Contato para o topo do CV: só o valor, sem o rótulo ("E-mail: x" → "x")."""
+    return [
+        c.texto.split(":", 1)[1].strip() if ":" in c.texto else c.texto
+        for c in selecionar_contato(doc)
+    ]
+
+
+async def gerar_documento(
+    pasta_perfil: Path, engine: Engine, perfil: Perfil, cv: CV, doc: Documento, vaga: Vaga | None
+) -> CV:
+    """O PDF só sai sem bloqueios; fica em `cvs/` na pasta do perfil (fora do repositório)."""
+    if checar_cv(cv, doc, vaga).bloqueios:
+        raise ErroCV("Ainda há pontos a corrigir no rascunho; o PDF não foi gerado.")
+    rascunho = rascunho_do_cv(cv)
+    fatos = {f.id: f for f in doc.fatos}
+    linhas = [linhas_do_cargo(fatos[e.cargo_id], cv.idioma) for e in rascunho.experiencias]
+    html = html_do_cv(rascunho, perfil.nome, cabecalho(doc), linhas, TITULOS_SECAO[cv.idioma])
+    try:
+        pdf = await gerar_pdf(html)
+    except ErroPDF as erro:
+        raise ErroCV(str(erro)) from erro
+
+    empresa = (vaga.empresa if vaga else None) or "geral"
+    nome = nome_seguro(f"{date.today().isoformat()}_{empresa}_{cv.idioma}.pdf")
+    destino = pasta_perfil / "cvs" / nome
+    destino.parent.mkdir(parents=True, exist_ok=True)
+    destino.write_bytes(pdf.conteudo)
+    with Session(engine, expire_on_commit=False) as sessao:
+        registro = sessao.get(CV, cv.id)
+        registro.estado = "pronto"
+        registro.arquivo_pdf = destino.relative_to(pasta_perfil).as_posix()
+        registro.paginas = pdf.paginas
+        registro.atualizado_em = agora_utc()
+        sessao.add(registro)
+        sessao.commit()
+        return registro

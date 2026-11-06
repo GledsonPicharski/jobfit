@@ -76,6 +76,7 @@
 
 {% if cv.estado == "pronto" and cv.arquivo_pdf %}
 <article class="aviso sucesso-caixa">PDF pronto ({{ cv.paginas }} página(s)):
-  <a href="/p/{{ perfil.slug }}/cvs/{{ cv.id }}/pdf">baixar</a> · <small>guardado em <code>{{ cv.arquivo_pdf }}</code></small></article>
+  <a href="/p/{{ perfil.slug }}/cvs/{{ cv.id }}/pdf">baixar</a> · <small>guardado em <code>{{ cv.arquivo_pdf }}</code></small>
+  {% if cv.paginas and cv.paginas > 2 %}<br><small>⚠ Passou de 2 páginas: remova as frases menos ligadas à vaga e gere de novo.</small>{% endif %}</article>
 {% endif %}
 {% endblock %}

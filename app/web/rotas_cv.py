@@ -5,17 +5,19 @@ import re
 from typing import Literal
 
 from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse
 
 from app.cv import servico as cvs
 from app.cv.checagem import frases
 from app.cv.modelos import SECOES_DE_FRASES, Rascunho
+from app.cv.render import TITULOS_SECAO
 from app.cv.tabelas import CV
 from app.db import banco_do_perfil
 from app.dossie.formato import ErroDossie
 from app.dossie.versoes import carregar_dossie
 from app.ia import ErroIA
 from app.perfis.modelos import Perfil
+from app.perfis.servico import pasta_perfil
 from app.vagas import servico as vagas
 from app.vagas.tabelas import Vaga
 from app.web.rotas import Pasta, PerfilAtual, ir, templates
@@ -23,26 +25,6 @@ from app.web.rotas_vagas import _tela_vaga
 
 router = APIRouter()
 
-TITULOS_SECAO = {
-    "pt": {
-        "resumo": "Resumo",
-        "experiencias": "Experiência",
-        "competencias": "Competências",
-        "formacao": "Formação",
-        "idiomas": "Idiomas",
-        "certificacoes": "Certificações",
-        "outros": "Prêmios, publicações e docência",
-    },
-    "en": {
-        "resumo": "Summary",
-        "experiencias": "Experience",
-        "competencias": "Skills",
-        "formacao": "Education",
-        "idiomas": "Languages",
-        "certificacoes": "Certifications",
-        "outros": "Awards, publications and teaching",
-    },
-}
 templates.env.globals.update(TITULOS_SECAO_CV=TITULOS_SECAO, SECOES_DE_FRASES=SECOES_DE_FRASES)
 _ACAO_CARGO = re.compile(r"^cargo_(dossie|confirmar):(\d+)$")
 
@@ -87,12 +69,6 @@ def _erro_na_vaga(request, pasta, perfil, vaga, mensagem, status=409):
     return _tela_vaga(request, pasta, perfil, vaga, mensagem, status)
 
 
-def _cabecalho(perfil: Perfil, doc) -> list[str]:
-    """Contato para o topo do CV: só o valor, sem o rótulo ("E-mail: x" → "x")."""
-    contatos = cvs.selecionar_contato(doc)
-    return [c.texto.split(":", 1)[1].strip() if ":" in c.texto else c.texto for c in contatos]
-
-
 def _tela_cv(request: Request, pasta, perfil: Perfil, cv: CV, erro: str = "", status=200):
     engine = banco_do_perfil(perfil.slug)
     doc = carregar_dossie(pasta, engine, perfil)
@@ -116,7 +92,7 @@ def _tela_cv(request: Request, pasta, perfil: Perfil, cv: CV, erro: str = "", st
             (fatos[e.cargo_id].cargo or fatos[e.cargo_id].texto) if e.cargo_id in fatos else ""
             for e in rascunho.experiencias
         ],
-        "cabecalho": _cabecalho(perfil, doc),
+        "cabecalho": cvs.cabecalho(doc),
         "alertas": json.loads(cv.alertas),
         "chamada": cvs.custo(engine, cv),
         "titulos": TITULOS_SECAO[cv.idioma],
@@ -183,4 +159,22 @@ async def salvar_cv(request: Request, pasta: Pasta, perfil: PerfilAtual, cv_id: 
 
 
 async def _gerar_pdf(request: Request, pasta, perfil: Perfil, cv: CV):
-    return _tela_cv(request, pasta, perfil, cv, "O PDF chega na próxima etapa.", 501)
+    engine = banco_do_perfil(perfil.slug)
+    doc = carregar_dossie(pasta, engine, perfil)
+    vaga = vagas.obter_vaga(engine, cv.vaga_id) if cv.vaga_id else None
+    try:
+        await cvs.gerar_documento(pasta_perfil(pasta, perfil.slug), engine, perfil, cv, doc, vaga)
+    except cvs.ErroCV as erro:
+        return _tela_cv(request, pasta, perfil, cv, str(erro), 409)
+    return ir(f"/p/{perfil.slug}/cvs/{cv.id}")
+
+
+@router.get("/p/{slug}/cvs/{cv_id}/pdf")
+def baixar_pdf(pasta: Pasta, perfil: PerfilAtual, cv_id: int):
+    cv = _cv(perfil, cv_id)
+    if cv.estado != "pronto" or not cv.arquivo_pdf:
+        raise HTTPException(404, "Este CV ainda não tem PDF.")
+    caminho = pasta_perfil(pasta, perfil.slug) / cv.arquivo_pdf
+    if not caminho.is_file():
+        raise HTTPException(404, "O arquivo do PDF não está mais na pasta do perfil.")
+    return FileResponse(caminho, media_type="application/pdf", filename=caminho.name)
