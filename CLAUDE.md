@@ -104,3 +104,10 @@ Os dois usuários usam Windows. Desenvolver e testar pensando nele:
 - `sem_acento` apaga pontuação fora do ASCII (o travessão "—") e desloca as posições. Nunca recorte o texto original com posições achadas no texto normalizado.
 - Teste com dado público real cedo: uma vaga real do Greenhouse revelou o salário anual escrito antes do valor ("Annual Salary:") e o travessão entre os valores.
 - Teste `async` usa `pytestmark = pytest.mark.anyio` e a fixture `anyio_backend` devolvendo "asyncio".
+
+**Fase 4**
+
+- O Playwright roda na API síncrona numa thread (`anyio.to_thread`): assim não depende do laço de eventos do uvicorn, que no Windows pode não aceitar subprocessos.
+- `text-transform` no CSS muda o texto que o PDF entrega ("Resumo" vira "RESUMO" ao copiar). Em documento para ATS, escreva o texto como deve ser lido.
+- Meça o tamanho com o dossiê real: com os limites iniciais, o CV dava 3 páginas. Os limites ficam em `config/cv.yaml`, e o ensaio de páginas usa uma pasta temporária.
+- O mesmo campo pode ter tipos diferentes em tarefas diferentes (`titulo` é texto na avaliação e objeto no CV). O modelo falso dos testes responde pela tarefa (`info.output_tools[0].parameters_json_schema["title"]`).

@@ -5,14 +5,17 @@
 # antigos entram só com a linha do cargo, empresa e datas.
 anos_detalhados: 10
 
-# Resultados candidatos por cargo detalhado (a IA escreve no máximo este tanto).
-bullets_por_cargo: 5
+# Resultados candidatos por cargo detalhado (a IA escreve no máximo um bullet por candidato):
+# os cargos mais recentes levam mais; os demais detalhados, menos.
+bullets_por_cargo: 4
+cargos_com_mais_bullets: 2
+bullets_demais_cargos: 2
 
 # Itens das seções curtas.
 competencias: 14
-certificacoes: 4
-premios_publicacoes: 3
-docencia_mentoria: 3
+certificacoes: 3
+premios_publicacoes: 2
+docencia_mentoria: 1
 
 # Frases do resumo no topo do CV.
 frases_resumo: 3

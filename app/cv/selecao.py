@@ -38,6 +38,8 @@ class ConfigCV(BaseModel):
 
     anos_detalhados: int = Field(ge=1)
     bullets_por_cargo: int = Field(ge=1)
+    cargos_com_mais_bullets: int = Field(ge=0)
+    bullets_demais_cargos: int = Field(ge=0)
     competencias: int = Field(ge=1)
     certificacoes: int = Field(ge=0)
     premios_publicacoes: int = Field(ge=0)
@@ -140,10 +142,15 @@ def selecionar(
     s = Selecao()
     cargos = sorted((f for f in publicaveis if f.tipo == "cargo"), key=_inicio, reverse=True)
     resultados = [f for f in publicaveis if f.tipo == "resultado"]
-    for cargo in cargos:
+    for posicao, cargo in enumerate(cargos):
         detalhado = _detalhado(cargo, config, hoje)
+        limite = (
+            config.bullets_por_cargo
+            if posicao < config.cargos_com_mais_bullets
+            else config.bullets_demais_cargos
+        )
         da_empresa = [f for f in resultados if _mesma_empresa(f.empresa, cargo.empresa)]
-        escolhidos = _ordenar(da_empresa, termos, citados)[: config.bullets_por_cargo]
+        escolhidos = _ordenar(da_empresa, termos, citados)[:limite]
         s.cargos.append(CargoSelecionado(cargo, escolhidos if detalhado else [], detalhado))
     com_cargo = {c.cargo.empresa and palavras(c.cargo.empresa) for c in s.cargos}
     soltos = [f for f in resultados if not f.empresa or palavras(f.empresa) not in com_cargo]

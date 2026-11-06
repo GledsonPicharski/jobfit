@@ -2,13 +2,14 @@
 
 **Living career dossier.** Um app local, aberto e gratuito que mantém um dossiê de carreira vivo e o usa para avaliar vagas, gerar um CV por vaga e controlar candidaturas, sem inventar nada e sem enviar nada por você.
 
-> Status: em construção (Fase 3: avaliação de vaga). O plano completo está em [`docs/PLANO.md`](docs/PLANO.md).
+> Status: em construção (Fase 4: CV por vaga). O plano completo está em [`docs/PLANO.md`](docs/PLANO.md).
 
 **Já funciona:**
 
 - **Perfis e IA:** modo manual (copiar e colar no seu chat, sem custo) ou API.
 - **Dossiê de referência:** nasce do PDF do LinkedIn, de um dossiê ou CV que você já tem, ou à mão, e depois evolui com o uso. Tem versões, diff e desfazer.
 - **Avaliação de vaga:** cole o link ou o texto da vaga. Os filtros dos seus critérios rodam em código, sem gastar IA. A IA julga cada requisito, e a nota de 0 a 100 (faixas A–D) sai em código. Cada força e lacuna mostra o trecho da vaga e os fatos do dossiê. "Eu tenho isso" numa lacuna vira fato no dossiê e recalcula a nota na hora.
+- **CV por vaga:** em português ou inglês, a partir do dossiê. O código escolhe os fatos e monta cargos, empresas e datas; a IA redige as frases citando os fatos; o código confere cada número, ano, empresa e cargo antes de liberar o PDF, legível por sistemas de recrutamento.
 
 ## O que ele faz
 

@@ -19,9 +19,9 @@ empresa que não estiver nos fatos citados bloqueia o CV.
 - `titulo`: o título profissional, curto, alinhado à vaga e sustentado pelos cargos
   (ex.: "Gerente de Dados e IA").
 - `resumo`: até `frases_resumo` frases sobre a trajetória, o que mais se liga à vaga.
-- `experiencias`: para cada cargo de `cargos`, até `bullets_por_cargo` bullets com os
-  resultados daquele cargo, os mais relevantes para a vaga primeiro. Cargo sem fatos
-  candidatos fica sem bullets. No CV em inglês, se o cargo não tiver `cargo_en`, preencha
+- `experiencias`: para cada cargo de `cargos`, no máximo um bullet por fato candidato
+  daquele cargo, os mais relevantes para a vaga primeiro. Cargo sem fatos candidatos fica
+  sem bullets. No CV em inglês, se o cargo não tiver `cargo_en`, preencha
   `cargo_traduzido` com a tradução usual do título; a pessoa vai confirmar.
 - `competencias`: até `competencias` itens curtos (ex.: "Python", "Gestão de produtos de
   IA"), os que a vaga pede primeiro.

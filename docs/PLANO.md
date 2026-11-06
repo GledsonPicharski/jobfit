@@ -483,7 +483,8 @@ Cada fase só termina com todos os itens dela marcados. Os testes automáticos c
 - [ ] Gerar um CV em português e um em inglês para a mesma vaga.
 - [ ] Todo número do CV existe no dossiê.
 - [ ] Colocar à mão um número falso no rascunho: a checagem bloqueia o PDF.
-- [ ] Trocar um cargo à mão (Gerente → Head): o app avisa.
+- [ ] Trocar um cargo à mão (Gerente → Head): o app bloqueia o PDF e oferece "Usar o do dossiê".
+- [ ] No CV em inglês, confirmar a tradução de um cargo: ela vira `cargo_en` no dossiê e não é pedida de novo.
 - [ ] Nenhum fato 🔒 aparece no CV.
 - [ ] O PDF abre, tem 1 a 2 páginas, acentos corretos, e o texto copiado mantém a ordem.
 - [ ] Subir o PDF num leitor de CV gratuito (ou numa candidatura de teste): os campos são lidos.
