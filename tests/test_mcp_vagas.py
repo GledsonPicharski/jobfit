@@ -150,3 +150,23 @@ async def test_tela_do_pedido_avisa_e_segue_quando_o_claude_responde(pasta_dados
     assert fora.headers["HX-Redirect"] == f"/p/ana/pedidos/{pedido_id}"
 
     assert "1 pelo Claude Desktop" in cliente.get("/p/ana/custos").text
+
+
+async def test_listar_vagas_novas_do_scan_pela_prenota(pasta_dados):
+    from sqlmodel import Session
+
+    from app.vagas.tabelas import Vaga
+
+    _perfil(pasta_dados, "ana")
+    engine = banco_do_perfil("ana")
+    with Session(engine) as sessao:
+        for titulo, prenota, aberta in [("Head of Data", 40, True), ("Gerente de Dados", 90, True),
+                                        ("Fechada", 99, False)]:  # fmt: skip
+            sessao.add(Vaga(fonte="gupy", titulo=titulo, texto=titulo, hash_texto=titulo,
+                            estado="nova", prenota=prenota, aberta=aberta))  # fmt: skip
+        sessao.commit()
+    async with Client(criar_servidor("ana")) as mcp:
+        novas = _texto(await mcp.call_tool("listar_vagas", {"novas": True}))
+    assert novas.startswith("2 vaga(s) nova(s)")
+    assert novas.index("Gerente de Dados") < novas.index("Head of Data")
+    assert "pré-nota 90" in novas and "Fechada" not in novas

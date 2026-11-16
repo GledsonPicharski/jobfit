@@ -2,17 +2,24 @@
 
 O stdout é do protocolo: nada aqui imprime. As ferramentas são finas sobre
 `app.mcp.ferramentas`; um `ErroFerramenta` vira um resultado de erro para o Claude.
+
+`app.mcp.ferramentas` (e com ele o Pydantic AI e o banco) só é importado na primeira
+chamada: o Claude Desktop espera pouco pela resposta ao `initialize`.
 """
 
 from collections.abc import Callable
-from functools import wraps
+from functools import cache, wraps
 from typing import Any
 
 from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 
-from app.mcp import ferramentas
-from app.mcp.ferramentas import Contexto, ErroFerramenta
+
+def _ferramentas():
+    from app.mcp import ferramentas
+
+    return ferramentas
+
 
 INSTRUCOES = """\
 O JobFit é o app local de carreira da pessoa: guarda o dossiê dela, avalia vagas e gera
@@ -34,34 +41,39 @@ def _erros_para_o_claude[F: Callable[..., Any]](funcao: F) -> F:
             if hasattr(resultado, "__await__"):
                 resultado = await resultado
             return resultado
-        except ErroFerramenta as erro:
-            raise ToolError(str(erro)) from erro
+        except Exception as erro:
+            if isinstance(erro, _ferramentas().ErroFerramenta):
+                raise ToolError(str(erro)) from erro
+            raise
 
     return envolvida  # type: ignore[return-value]
 
 
 def criar_servidor(slug: str | None = None) -> MCPServer:
-    ctx = Contexto(slug)
     servidor = MCPServer("jobfit", title="JobFit", instructions=INSTRUCOES)
+
+    @cache
+    def contexto():
+        return _ferramentas().Contexto(slug)
 
     @servidor.tool()
     @_erros_para_o_claude
     def pedidos_pendentes() -> str:
         """Lista os pedidos do JobFit esperando resposta da IA (inclusive os criados na tela)."""
-        return ferramentas.listar_pedidos(ctx)
+        return _ferramentas().listar_pedidos(contexto())
 
     @servidor.tool()
     @_erros_para_o_claude
     def ver_pedido(pedido_id: str) -> str:
         """Abre um pedido do JobFit (ex.: P-ABC234): a tarefa, os dados e o formato da resposta."""
-        return ferramentas.ver_pedido(ctx, pedido_id)
+        return _ferramentas().ver_pedido(contexto(), pedido_id)
 
     @servidor.tool()
     @_erros_para_o_claude
     def responder_pedido(pedido_id: str, resposta: dict[str, Any] | str) -> str:
         """Entrega a resposta de um pedido: em `resposta`, o objeto que segue o JSON Schema
         do pedido. O JobFit valida; se vier errada, diz o que corrigir."""
-        return ferramentas.responder(ctx, pedido_id, resposta)
+        return _ferramentas().responder(contexto(), pedido_id, resposta)
 
     @servidor.tool()
     @_erros_para_o_claude
@@ -72,7 +84,7 @@ def criar_servidor(slug: str | None = None) -> MCPServer:
         vaga (LinkedIn só por texto colado); ou o `vaga_id` de uma vaga já trazida.
         `forcar=true` avalia mesmo uma vaga barrada pelos critérios da pessoa. Pode devolver
         um pedido para você fazer; a nota é sempre calculada pelo JobFit."""
-        return await ferramentas.avaliar_vaga(ctx, vaga, vaga_id, forcar)
+        return await _ferramentas().avaliar_vaga(contexto(), vaga, vaga_id, forcar)
 
     @servidor.tool()
     @_erros_para_o_claude
@@ -81,12 +93,14 @@ def criar_servidor(slug: str | None = None) -> MCPServer:
         o idioma da vaga). Reabre o rascunho que já existe, com as edições da pessoa;
         `novo=true` redige outro com o dossiê atual. Pode devolver um pedido para você
         fazer. O JobFit confere cada frase; o PDF é gerado no app, depois da revisão."""
-        return await ferramentas.gerar_cv(ctx, vaga_id, idioma, novo)
+        return await _ferramentas().gerar_cv(contexto(), vaga_id, idioma, novo)
 
     @servidor.tool()
     @_erros_para_o_claude
-    def listar_vagas(limite: int = 20) -> str:
-        """As vagas mais recentes do JobFit, com o vaga_id, a nota e a situação."""
-        return ferramentas.listar(ctx, limite)
+    def listar_vagas(limite: int = 20, novas: bool = False) -> str:
+        """As vagas mais recentes do JobFit, com o vaga_id, a nota e a situação.
+        `novas=true` lista só as trazidas pelo scan e ainda não avaliadas, da maior
+        pré-nota (estimativa por palavras) para a menor: para avaliar as melhores."""
+        return _ferramentas().listar(contexto(), limite, novas)
 
     return servidor

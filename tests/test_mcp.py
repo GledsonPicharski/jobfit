@@ -130,3 +130,17 @@ def test_processo_real_so_fala_o_protocolo_no_stdout(ana):
     for linha in linhas:
         assert json.loads(linha)["jsonrpc"] == "2.0"
     assert json.loads(linhas[0])["result"]["serverInfo"]["name"] == "jobfit"
+
+
+def test_servidor_sobe_sem_carregar_a_ia():
+    """O Claude Desktop espera pouco pelo initialize: a IA e o banco só na primeira chamada."""
+    import subprocess
+    import sys
+
+    codigo = (
+        "import sys, app.mcp.servidor; print('pydantic_ai' in sys.modules, 'app.db' in sys.modules)"
+    )
+    saida = subprocess.run(
+        [sys.executable, "-c", codigo], capture_output=True, text=True, check=True
+    ).stdout
+    assert saida.split() == ["False", "False"]

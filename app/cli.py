@@ -139,11 +139,46 @@ def scan(
     except (ErroPerfil, ErroScanner) as erro:
         typer.echo(str(erro))
         raise typer.Exit(1) from erro
-    nomes = {p.id: p.nome for p in carregar_catalogo(cfg.pasta_dados).portais}
-    for linha in linhas_do_resumo(varredura, nomes):
-        typer.echo(linha)
+    if not agendada:  # agendada roda no pythonw, sem terminal: o resultado fica em Buscas
+        nomes = {p.id: p.nome for p in carregar_catalogo(cfg.pasta_dados).portais}
+        for linha in linhas_do_resumo(varredura, nomes):
+            typer.echo(linha)
     if varredura.estado == "falhou":
         raise typer.Exit(1)
+
+
+@cli.command("agendar")
+def agendar(
+    perfil: Annotated[str | None, typer.Option(help="Slug do perfil; padrão: o último.")] = None,
+    hora: Annotated[str, typer.Option(help="Hora do scan diário (HH:MM).")] = "08:00",
+    remover: Annotated[bool, typer.Option(help="Tirar o scan diário do agendador.")] = False,
+) -> None:
+    """Roda o scan todo dia, pelo Agendador de Tarefas do Windows."""
+    import sys
+
+    from app import agendamento
+
+    slug = perfil or carregar_config().ultimo_perfil
+    if not slug:
+        typer.echo("Crie um perfil no app antes (uv run jobfit).")
+        raise typer.Exit(1)
+    if sys.platform != "win32":
+        typer.echo("O agendamento usa o Agendador de Tarefas do Windows; aqui, rode jobfit scan.")
+        raise typer.Exit(1)
+    try:
+        if remover:
+            agendamento.rodar(agendamento.comando_remover(slug))
+            typer.echo(f"Scan diário de {slug} removido do Agendador de Tarefas.")
+            return
+        agendamento.rodar(agendamento.comando_criar(slug, hora))
+    except agendamento.ErroAgendamento as erro:
+        typer.echo(str(erro))
+        raise typer.Exit(1) from erro
+    typer.echo(
+        f"Scan de {slug} agendado para todo dia às {hora} "
+        f"(tarefa {agendamento.nome_tarefa(slug)!r} no Agendador de Tarefas)."
+    )
+    typer.echo("O resultado de cada rodada aparece em Buscas, no app.")
 
 
 mcp = typer.Typer(help="Servidor MCP para o Claude Desktop (decisão 0008).")
@@ -195,3 +230,7 @@ def remover_mcp() -> None:
 
 def main() -> None:
     cli()
+
+
+if __name__ == "__main__":  # python -m app.cli (o agendador usa assim, sem jobfit.exe)
+    main()
