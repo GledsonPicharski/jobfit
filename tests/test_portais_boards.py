@@ -100,9 +100,11 @@ def test_get_on_board_modalidade_e_empresa():
 
 def test_ainda_aberta_dos_boards():
     url = "https://www.getonbrd.com/jobs/partnerships-and-campaign-manager-remote-adfuel-remote"
-    api = "https://www.getonbrd.com/api/v0/jobs/partnerships-and-campaign-manager-remote-adfuel-remote"
-    assert getonboard.ainda_aberta(url, _cliente({api: (200, "{}")})[0])
+    assert getonboard.ainda_aberta(url, _cliente({url: (301, "")})[0])  # vai para a categoria
     assert not getonboard.ainda_aberta(url, _cliente({})[0])
+    vaga_hima = "https://himalayas.app/companies/x/jobs/y"
+    assert himalayas.ainda_aberta(vaga_hima, _cliente({vaga_hima: (403, "bloqueado")})[0])
+    assert not himalayas.ainda_aberta(vaga_hima, _cliente({})[0])
     vaga = "https://remotive.com/remote-jobs/marketing/remote-office-assistant-1680495"
     assert remotive.ainda_aberta(vaga, _cliente({vaga: (200, "ok")})[0])
     assert not remotive.ainda_aberta(vaga, _cliente({})[0])

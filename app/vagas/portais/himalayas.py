@@ -6,7 +6,7 @@ import httpx2
 
 from app.vagas.buscas import titulo_casa
 from app.vagas.leitura import VagaBruta
-from app.vagas.portais import Consulta, existe, montar, obter_json, texto_de_html
+from app.vagas.portais import Consulta, ErroPortal, existe, montar, obter_json, texto_de_html
 
 API = "https://himalayas.app/jobs/api/search"
 POR_TERMO = 20
@@ -45,4 +45,11 @@ def buscar(consulta: Consulta, cliente: httpx2.Client) -> list[VagaBruta]:
 
 
 def ainda_aberta(url: str, cliente: httpx2.Client) -> bool:
-    return existe(cliente, url)
+    """A página da vaga barra robôs (403): aí não dá para saber, e a vaga fica como aberta
+    até a próxima conferência."""
+    try:
+        return existe(cliente, url)
+    except ErroPortal as erro:
+        if "403" in str(erro):
+            return True
+        raise

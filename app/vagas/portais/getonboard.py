@@ -5,7 +5,7 @@ avaliar a vaga, como uma vaga colada (decisão 0009).
 """
 
 import json
-from urllib.parse import quote, urlsplit
+from urllib.parse import quote
 
 import httpx2
 
@@ -68,7 +68,6 @@ def buscar(consulta: Consulta, cliente: httpx2.Client) -> list[VagaBruta]:
 
 
 def ainda_aberta(url: str, cliente: httpx2.Client) -> bool:
-    caminho = urlsplit(url).path.rstrip("/")
-    if not caminho.startswith("/jobs/"):
-        return True
-    return existe(cliente, f"{API}/jobs/{caminho.rsplit('/', 1)[-1]}")
+    """A página pública: redireciona para o endereço com a categoria se a vaga existe,
+    404 se não existe (a API de uma vaga só pede login)."""
+    return existe(cliente, url)
