@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 import httpx2
+import pytest
 
 from app.vagas.catalogo import Empresa
 from app.vagas.portais import Consulta, ashby, greenhouse, lever
@@ -129,6 +130,28 @@ def test_ashby_ainda_aberta_pela_lista():
     fechada = "https://jobs.ashbyhq.com/nubank/00000000-0000-0000-0000-000000000000"
     assert ashby.ainda_aberta(aberta, cliente)
     assert not ashby.ainda_aberta(fechada, cliente)
+
+
+def test_ler_quadro_do_link_colado():
+    from app.vagas.portais import ler_quadro
+
+    assert ler_quadro("https://job-boards.greenhouse.io/vtex") == ("greenhouse", "vtex")
+    assert ler_quadro("https://boards.greenhouse.io/vtex/jobs/123") == ("greenhouse", "vtex")
+    assert ler_quadro("https://jobs.lever.co/yuno/016fc224") == ("lever", "yuno")
+    assert ler_quadro("https://jobs.ashbyhq.com/mistral.ai") == ("ashby", "mistral.ai")
+    assert ler_quadro("  nubank ") == (None, "nubank")
+
+
+def test_conferir_quadro():
+    from app.vagas.portais import ErroPortal, conferir_quadro
+
+    cliente, _ = _cliente({GH_LISTA: (200, _fixture("greenhouse_lista.json"))})
+    assert conferir_quadro("greenhouse", "vtex", cliente) == 3
+    with pytest.raises(ErroPortal, match="não achei o quadro 'fora'"):
+        conferir_quadro("greenhouse", "fora", cliente)
+    html, _ = _cliente({ASHBY.split("?")[0]: (200, "<html>")})
+    with pytest.raises(ErroPortal, match="não achei"):
+        conferir_quadro("ashby", "nubank", html)
 
 
 def test_fixtures_sao_json_valido_e_sem_e_mail():

@@ -9,6 +9,7 @@ um erro no portal inteiro sobe como `ErroPortal`, e o scanner segue para o próx
 """
 
 import html
+import re
 import time
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -91,6 +92,41 @@ def data_iso(valor: Any) -> str | None:
 
 def texto_de_html(*partes: str | None) -> str:
     return "\n\n".join(html_para_texto(html.unescape(p)) for p in partes if p)
+
+
+# --- empresas dos ATS -------------------------------------------------------------
+
+_LISTA_DO_ATS = {
+    "greenhouse": "https://boards-api.greenhouse.io/v1/boards/{}/jobs",
+    "lever": "https://api.lever.co/v0/postings/{}?mode=json",
+    "ashby": "https://api.ashbyhq.com/posting-api/job-board/{}",
+}
+_QUADRO_NA_URL = [
+    ("greenhouse", re.compile(r"greenhouse\.io/(?:v1/boards/|embed/job_board\?for=)?([\w.-]+)")),
+    ("lever", re.compile(r"lever\.co/(?:v0/postings/)?([\w.-]+)")),
+    ("ashby", re.compile(r"ashbyhq\.com/(?:posting-api/job-board/)?([\w.-]+)")),
+]
+
+
+def ler_quadro(texto: str) -> tuple[str | None, str]:
+    """O ATS e o identificador do quadro a partir do link colado (ou o próprio identificador)."""
+    texto = texto.strip()
+    for ats, padrao in _QUADRO_NA_URL:
+        if m := padrao.search(texto):
+            return ats, m.group(1)
+    return None, texto.strip("/")
+
+
+def conferir_quadro(ats: str, quadro: str, cliente: httpx2.Client) -> int:
+    """Quantas vagas o quadro tem agora; `ErroPortal` se o quadro não existe."""
+    try:
+        dados = obter_json(cliente, _LISTA_DO_ATS[ats].format(quadro))
+    except ErroPortal as erro:
+        raise ErroPortal(f"não achei o quadro {quadro!r} no {ats.capitalize()} ({erro})") from erro
+    vagas = dados if isinstance(dados, list) else dados.get("jobs")
+    if not isinstance(vagas, list):
+        raise ErroPortal(f"não achei o quadro {quadro!r} no {ats.capitalize()}")
+    return len(vagas)
 
 
 def montar(

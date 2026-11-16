@@ -1,6 +1,7 @@
 """Buscas salvas e o scan de portais (decisão 0009): nada aqui chama a IA."""
 
 from typing import Annotated
+from urllib.parse import quote
 
 from fastapi import APIRouter, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse
@@ -17,7 +18,22 @@ from app.vagas.buscas import (
     obter_busca,
     salvar_busca,
 )
-from app.vagas.catalogo import carregar_catalogo
+from app.vagas.catalogo import (
+    CATEGORIAS,
+    MODOS,
+    ErroCatalogo,
+    acrescentar_empresa,
+    acrescentar_portal,
+    carregar_catalogo,
+)
+from app.vagas.leitura import novo_cliente
+from app.vagas.metricas import (
+    definir_lembrete,
+    lembretes_vencidos,
+    marcar_checado,
+    metricas_por_portal,
+)
+from app.vagas.portais import ErroPortal, conferir_quadro, ler_quadro
 from app.web.rotas import Pasta, PerfilAtual, ir, templates
 from app.web.rotas_vagas import _linhas
 
@@ -133,6 +149,131 @@ def gravar_busca(
 def apagar_busca(perfil: PerfilAtual, busca_id: int):
     excluir_busca(banco_do_perfil(perfil.slug), busca_id)
     return ir(f"/p/{perfil.slug}/buscas")
+
+
+# --- portais --------------------------------------------------------------------
+
+
+def _tela_portais(request: Request, pasta, perfil: Perfil, aviso="", erro="", status=200):
+    engine = banco_do_perfil(perfil.slug)
+    catalogo = carregar_catalogo(pasta)
+    registros = scanner.portais_do_perfil(engine)
+    metricas = {m.portal: m for m in metricas_por_portal(engine)}  # já em ordem de resultado
+    ordem = {portal: i for i, portal in enumerate(metricas)}
+    ativos = sorted(catalogo.ativos(), key=lambda p: ordem.get(p.id, len(ordem)))
+    lembretes = {}
+    for portal in catalogo.lembretes():
+        lembretes.setdefault(portal.categoria, []).append(portal)
+    return templates.TemplateResponse(
+        request,
+        "portais.html",
+        {
+            "perfil": perfil,
+            "ativos": ativos,
+            "metricas": metricas,
+            "registros": registros,
+            "lembretes": lembretes,
+            "vencidos": {p.id for p, _ in lembretes_vencidos(engine, catalogo)},
+            "outros": [p for p in catalogo.portais if p.status != "ativo"],
+            "empresas": catalogo.empresas,
+            "nomes": {p.id: p.nome for p in catalogo.portais},
+            "CATEGORIAS": CATEGORIAS,
+            "MODOS": MODOS,
+            "aviso": aviso,
+            "erro": erro,
+        },
+        status_code=status,
+    )
+
+
+@router.get("/p/{slug}/portais", response_class=HTMLResponse)
+def ver_portais(request: Request, pasta: Pasta, perfil: PerfilAtual, aviso: str = ""):
+    return _tela_portais(request, pasta, perfil, aviso=aviso)
+
+
+@router.post("/p/{slug}/portais/empresas", response_class=HTMLResponse)
+def acrescentar_empresa_ats(
+    request: Request,
+    pasta: Pasta,
+    perfil: PerfilAtual,
+    nome: Annotated[str, Form()],
+    quadro: Annotated[str, Form()],
+    ats: Annotated[str, Form()] = "",
+):
+    """Confere o quadro ao vivo antes de salvar: uma empresa errada não entra no scan."""
+    achado, identificador = ler_quadro(quadro)
+    ats = achado or ats
+    if ats not in ("greenhouse", "lever", "ashby"):
+        erro = "Escolha o sistema da empresa (Greenhouse, Lever ou Ashby) ou cole o link do quadro."
+        return _tela_portais(request, pasta, perfil, erro=erro, status=400)
+    try:
+        with novo_cliente() as cliente:
+            vagas = conferir_quadro(ats, identificador, cliente)
+        acrescentar_empresa(pasta, nome=nome, ats=ats, quadro=identificador)
+    except (ErroPortal, ErroCatalogo) as erro:
+        return _tela_portais(request, pasta, perfil, erro=f"Não acrescentei: {erro}.", status=400)
+    aviso = f"{nome.strip()} acrescentada: o quadro tem {vagas} vaga(s) agora."
+    return ir(f"/p/{perfil.slug}/portais?aviso={quote(aviso)}")
+
+
+@router.post("/p/{slug}/portais/novo", response_class=HTMLResponse)
+def acrescentar_portal_lembrete(
+    request: Request,
+    pasta: Pasta,
+    perfil: PerfilAtual,
+    nome: Annotated[str, Form()],
+    url: Annotated[str, Form()] = "",
+    categoria: Annotated[str, Form()] = "vagas",
+    frequencia_dias: Annotated[int | None, Form()] = 7,
+):
+    try:
+        portal = acrescentar_portal(
+            pasta, nome=nome, url=url, categoria=categoria, frequencia_dias=frequencia_dias
+        )
+    except ErroCatalogo as erro:
+        return _tela_portais(request, pasta, perfil, erro=str(erro), status=400)
+    aviso = (
+        f"{portal.nome} acrescentado: o JobFit lembra de checar a cada {frequencia_dias} dia(s)."
+    )
+    return ir(f"/p/{perfil.slug}/portais?aviso={quote(aviso)}")
+
+
+@router.post("/p/{slug}/portais/{portal}/ligar")
+def ligar(perfil: PerfilAtual, portal: str, ligado: Annotated[bool, Form()] = False):
+    scanner.ligar_portal(banco_do_perfil(perfil.slug), portal, ligado)
+    return ir(f"/p/{perfil.slug}/portais#lidos")
+
+
+@router.post("/p/{slug}/portais/{portal}/lembrete")
+def lembrete(
+    perfil: PerfilAtual,
+    portal: str,
+    frequencia_dias: Annotated[str, Form()] = "",
+    cadastro: Annotated[str, Form()] = "",
+    observacoes: Annotated[str, Form()] = "",
+):
+    dias = int(frequencia_dias) if frequencia_dias.strip().isdigit() else None
+    definir_lembrete(
+        banco_do_perfil(perfil.slug),
+        portal,
+        frequencia_dias=dias,
+        cadastro=cadastro or None,
+        observacoes=observacoes,
+    )
+    return ir(f"/p/{perfil.slug}/portais#portal-{portal}")
+
+
+@router.post("/p/{slug}/portais/{portal}/checado")
+def checado(
+    perfil: PerfilAtual,
+    portal: str,
+    observacoes: Annotated[str, Form()] = "",
+    voltar: Annotated[str, Form()] = "",
+):
+    marcar_checado(banco_do_perfil(perfil.slug), portal, observacoes)
+    if voltar == "inicio":
+        return ir(f"/p/{perfil.slug}")
+    return ir(f"/p/{perfil.slug}/portais#portal-{portal}")
 
 
 # --- o scan ---------------------------------------------------------------------

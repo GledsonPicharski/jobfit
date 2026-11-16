@@ -86,3 +86,6 @@ article.faixa-esperada button { margin: 0; width: auto; }
 td.acoes-linha { white-space: nowrap; }
 td.acoes-linha a[role="button"], td.acoes-linha form button { margin: 0 0.25rem 0 0; }
 tr.encerrada td { opacity: 0.6; }
+.portal-lembrete { padding: 0.5rem 0; border-bottom: 1px solid var(--pico-muted-border-color); }
+.portal-lembrete form { margin: 0.35rem 0 0; }
+.portal-lembrete form input, .portal-lembrete form select { margin-bottom: 0.25rem; }
