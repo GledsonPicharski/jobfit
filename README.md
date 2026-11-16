@@ -2,7 +2,7 @@
 
 **Living career dossier.** Um app local, aberto e gratuito que mantém um dossiê de carreira vivo e o usa para avaliar vagas, gerar um CV por vaga e controlar candidaturas, sem inventar nada e sem enviar nada por você.
 
-> Status: em construção (Fase 4: CV por vaga). O plano completo está em [`docs/PLANO.md`](docs/PLANO.md).
+> Status: em construção (Fase 6: scanner de portais). O plano completo está em [`docs/PLANO.md`](docs/PLANO.md).
 
 **Já funciona:**
 
@@ -10,6 +10,11 @@
 - **Dossiê de referência:** nasce do PDF do LinkedIn, de um dossiê ou CV que você já tem, ou à mão, e depois evolui com o uso. Tem versões, diff e desfazer.
 - **Avaliação de vaga:** cole o link ou o texto da vaga. Os filtros dos seus critérios rodam em código, sem gastar IA. A IA julga cada requisito, e a nota de 0 a 100 (faixas A–D) sai em código. Cada força e lacuna mostra o trecho da vaga e os fatos do dossiê. "Eu tenho isso" numa lacuna vira fato no dossiê e recalcula a nota na hora.
 - **CV por vaga:** em português ou inglês, a partir do dossiê. O código escolhe os fatos e monta cargos, empresas e datas; a IA redige as frases citando os fatos; o código confere cada número, ano, empresa e cargo antes de liberar o PDF, legível por sistemas de recrutamento.
+- **Claude Desktop:** avaliar vagas e gerar CVs pelo Claude, sem copiar e colar.
+- **Scanner de portais:**
+  - **Fontes:** lê Greenhouse, Lever e Ashby (40 empresas-alvo, e você acrescenta as suas), Gupy, Remotive, We Work Remotely, Himalayas e Get on Board.
+  - **O que roda em código, sem gastar IA:** juntar as vagas repetidas, aplicar os filtros das suas buscas e ordenar as novas por uma pré-nota.
+  - **Depois:** você avalia as que quiser. Os portais que exigem login viram lembretes, e o scan pode rodar todo dia sozinho.
 
 ## O que ele faz
 
@@ -54,6 +59,15 @@ Quem tem o Claude Desktop pode pular o copiar e colar:
 
 O Claude faz a parte de IA pela sua assinatura, e o JobFit confere tudo como no modo manual. A nota sai do código, e cada frase do CV é checada contra o dossiê. Ajustes no dossiê e o PDF do CV continuam no app. Um pedido aberto na tela também pode ser respondido pelo Claude Desktop ("responda o pedido P-XXXX do JobFit"), e a tela segue sozinha. Pela linha de comando: `uv run jobfit mcp instalar` e `uv run jobfit mcp remover`.
 
+### Buscar vagas nos portais
+
+1. No menu com o seu nome, abra **Buscas** e crie uma busca: até 5 títulos de vaga (em português e em inglês), só remoto ou não, os países onde você pode trabalhar e o que excluir.
+2. Clique em **Rodar agora**. O JobFit lê os portais, junta as vagas repetidas e aplica os filtros, sem gastar IA.
+3. Em **Vagas**, as novas aparecem ordenadas pela pré-nota, uma estimativa por palavras calculada no seu computador. **Avaliar** chama a IA só para a vaga escolhida. Pelo Claude Desktop também dá: "avalie as 3 melhores vagas novas do JobFit".
+4. Para rodar todo dia, use `uv run jobfit agendar --hora 08:00`. Isso cria uma tarefa no Agendador de Tarefas do Windows; `--remover` tira.
+
+Em **Portais** ficam as métricas de cada portal e os lembretes dos que exigem login. Ali também dá para acrescentar uma empresa: cole o link da página de vagas dela no Greenhouse, no Lever ou no Ashby. As empresas que você acrescenta ficam na sua pasta de dados, nunca no repositório. Pela linha de comando: `uv run jobfit scan`.
+
 ### Para contribuir
 
 ```powershell
@@ -66,11 +80,11 @@ O pre-commit barra CPF, e-mail real, valores em R$ e celulares. Para barrar tamb
 
 ## Stack
 
-Python 3.12 · uv · FastAPI · Jinja2 + HTMX · SQLite (SQLModel) · Pydantic AI · faster-whisper · Playwright · pytest
+Python 3.12 · uv · FastAPI · Jinja2 + HTMX · SQLite (SQLModel) · Pydantic AI · MCP · httpx · selectolax · faster-whisper · Playwright · pytest
 
 ## Inspirações
 
-- [career-ops](https://github.com/career-ops-hq/career-ops): avaliação de vagas, checagem de fatos e leitores de portais.
+- [career-ops](https://github.com/career-ops-hq/career-ops): avaliação de vagas, checagem de fatos, leitores de portais e a lista de empresas que semeou `catalogo/empresas.yaml`.
 - JobCopilot: buscas salvas, banco de respostas e simulador de entrevista.
 
 ## Licença

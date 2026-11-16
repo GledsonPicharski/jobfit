@@ -16,5 +16,6 @@ intervalo_por_portal:
 reconferir_por_rodada: 20
 reconferir_apos_dias: 7
 
-# Vagas publicadas há mais do que isso não entram como novas.
-idade_maxima_dias: 45
+# Vagas publicadas há mais do que isso não entram como novas. Muitas vagas ficam abertas
+# por meses (e o scan confere se ainda estão abertas): no ensaio real, 45 dias cortava demais.
+idade_maxima_dias: 90

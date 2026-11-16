@@ -120,3 +120,16 @@ Os dois usuários usam Windows. Desenvolver e testar pensando nele:
 - O Claude Desktop da Microsoft Store, nas versões recentes, move os dados para `%LOCALAPPDATA%\Claude-Data\claude_<id>\`, e a configuração vale ali. Um marcador `.user-data-left.*` fica na pasta antiga do pacote (`Packages\Claude_*\LocalCache\Roaming\Claude\`). Confira no `main.log` (`[user-data-move]`) em vez de supor o caminho pela pasta que existe.
 - Teste nunca toca no arquivo real do Claude Desktop: o `conftest` aponta `JOBFIT_CLAUDE_CONFIG` para uma pasta temporária. Trocar `LOCALAPPDATA` quebraria o Chromium do Playwright, que mora lá.
 - O navegador guarda o CSS em cache: os arquivos de `/static` saem com `?v=<data de alteração>` (`estatico()` em `app/web/rotas.py`).
+- O servidor MCP importa `app.mcp.ferramentas` (Pydantic AI, banco) só na primeira chamada; assim responde ao `initialize` em ~2 s em vez de ~5. Um teste garante que importar o servidor não carrega `pydantic_ai`.
+
+**Fase 6**
+
+- Sonde o portal real antes de escrever o leitor. O `robots.txt` e o aviso legal da própria API mudam o desenho:
+  - a Remotive pede no máximo 4 consultas por dia, então o leitor faz uma consulta só, sem termo;
+  - a Gupy devolve um link codificado com rastreio, e o formato clássico `<empresa>.gupy.io/jobs/<id>` funciona;
+  - o Himalayas responde 403 ao conferir a vaga;
+  - a API de uma vaga do Get on Board pede login.
+- Fixture de portal é resposta real recortada, com e-mail trocado por `[e-mail]`. Um teste confere que nenhuma fixture tem "@".
+- Ensaie o scan numa cópia do perfil: `JOBFIT_HOME` apontando para uma pasta temporária, com a cópia do banco e do dossiê. O ensaio mostrou que 45 dias de idade máxima cortava vagas válidas e que há vaga "remota" com 200 países no local.
+- Busca por título é por palavras, em qualquer ordem: "Head of AI" casa com "Global Head of Product Marketing (AI-Native)". Títulos curtos trazem mais ruído; a pré-nota e o "Descartar" resolvem o resto.
+- `python -m app.cli` precisa do `if __name__ == "__main__"`. O agendador usa o `pythonw.exe`, que não tem stdout: com `--agendada`, o scan não imprime nada.

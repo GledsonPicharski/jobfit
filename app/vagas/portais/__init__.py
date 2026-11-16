@@ -129,6 +129,9 @@ def conferir_quadro(ats: str, quadro: str, cliente: httpx2.Client) -> int:
     return len(vagas)
 
 
+_LOCAL_MAXIMO = 80
+
+
 def montar(
     texto: str,
     fonte: str,
@@ -141,6 +144,8 @@ def montar(
     publicada_em: Any = None,
     restricoes: list[str] | None = None,
 ) -> VagaBruta:
+    if local and len(local) > _LOCAL_MAXIMO:  # há vaga "remota" com 200 países listados
+        local = local[: _LOCAL_MAXIMO - 1].rsplit(",", 1)[0] + "…"
     estruturado = {
         "titulo": titulo,
         "empresa": empresa,

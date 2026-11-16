@@ -80,6 +80,14 @@ def test_himalayas_busca_por_titulo_e_traz_paises_aceitos():
     assert lifelancer.estruturado["publicada_em"].startswith("2026-")
 
 
+def test_local_com_paises_demais_e_encurtado():
+    from app.vagas.portais import montar
+
+    paises = ", ".join(f"País {i}" for i in range(60))
+    vaga = montar("texto", "himalayas", "https://x", titulo="T", empresa="E", local=paises)
+    assert len(vaga.estruturado["local"]) <= 80 and vaga.estruturado["local"].endswith("…")
+
+
 def test_get_on_board_modalidade_e_empresa():
     cliente, _ = _cliente(
         {"https://www.getonbrd.com/api/v0/search/jobs": (200, _fixture("getonboard.json"))}
