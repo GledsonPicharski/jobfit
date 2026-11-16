@@ -1,0 +1,56 @@
+[
+ {
+  "additionalPlain": "",
+  "categories": {
+   "commitment": "On-site",
+   "department": "Tech",
+   "location": "Hyderabad",
+   "team": "Infraestructure",
+   "allLocations": [
+    "Hyderabad"
+   ]
+  },
+  "createdAt": 1792506757868,
+  "descriptionPlain": "On-site · Full Time · People Manager · +5 Years of Experience · India Only\nCorporate IT Manager\nThis role is open only to candidates based in India. Applications from outside India will not be considered.\nWho We Are\nYuno is the AI-native operating system of global commerce, powering the financial infrastructure of enterprise merchants, banks, and wallets. Through a single API, Yuno connects them to pay-ins, payouts, fraud prevention, KYC/KYB, and stablecoins globally, so they can operate everywhere. Agnostic by design and connected to 1,000+ payment methods and 460+ integrations in 190+ countries, Yuno optimizes acceptance rates, reduces costs, and strengthens security through specialized AI agents that learn from every transaction. Global brands including McDonald's, NetEase Games, GoFundMe, and Rappi run their payments on Yuno.\nAbout The Role\nYuno is looking for a Corporate IT Manager, based in India, to own the internal technology backbone that keeps our fully remote, global team productive and secure. From device management and identity to SaaS administration and compliance, you'll lead Corporate IT, a new area within our Tech Infrastructure team, designing systems and automation that scale as Yuno grows across 190+ countries.\nThis is not a helpdesk role. You'll own the corporate IT stack end to end, drive the roadmap, automate what others still do by hand, and make security and compliance a built-in default rather than an afterthought — which matters when the company run",
+  "id": "95b3fdf9-a80d-4c1e-b7a1-ec2ca78e7096",
+  "lists": [],
+  "text": "Corporate IT Manager",
+  "country": "IN",
+  "workplaceType": "onsite",
+  "openingPlain": "",
+  "descriptionBodyPlain": "On-site · Full Time · People Manager · +5 Years of Experience · India Only\nCorporate IT Manager\nThis role is open only to candidates based in India. Applications from outside India will not be considered.\nWho We Are\nYuno is the AI-native operating system of global commerce, powering the financial infrastructure of enterprise merchants, banks, and wallets. Through a single API, Yuno connects them to pay-ins, payouts, fraud prevention, KYC/KYB, and stablecoins globally, so they can operate everywhere. Agnostic by design and connected to 1,000+ payment methods and 460+ integrations in 190+ countries, Yuno optimizes acceptance rates, reduces costs, and strengthens security through specialized AI agents that learn from every transaction. Global brands including McDonald's, NetEase Games, GoFundMe, and Rappi run their payments on Yuno.\nAbout The Role\nYuno is looking for a Corporate IT Manager, based in India, to own the internal technology backbone that keeps our fully remote, global team productive and secure. From device management and identity to SaaS administration and compliance, you'll lead Corporate IT, a new area within our Tech Infrastructure team, designing systems and automation that scale as Yuno grows across 190+ countries.\nThis is not a helpdesk role. You'll own the corporate IT stack end to end, drive the roadmap, automate what others still do by hand, and make security and compliance a built-in default rather than an afterthought — which matters when the company run",
+  "hostedUrl": "https://jobs.lever.co/yuno/95b3fdf9-a80d-4c1e-b7a1-ec2ca78e7096",
+  "applyUrl": "https://jobs.lever.co/yuno/95b3fdf9-a80d-4c1e-b7a1-ec2ca78e7096/apply"
+ },
+ {
+  "additionalPlain": "",
+  "categories": {
+   "commitment": "Remote",
+   "department": "Tech",
+   "location": "Bogota",
+   "team": "Core Payments",
+   "allLocations": [
+    "Bogota",
+    "Argentina",
+    "Chile",
+    "Mexico",
+    "Colombia",
+    "Lima",
+    "Brazil",
+    "Dominican Republic",
+    "Paraguay"
+   ]
+  },
+  "createdAt": 1770421264751,
+  "descriptionPlain": "Latam · Remote · Full Time · Technical Engineering Leader · +5 Years of Experience\n\nWho We Are\nAt Yuno, we are building the payment infrastructure that enables all companies to participate in the global market. Founded by a team of seasoned experts in the payments and IT industries, Yuno provides a high-performance payment orchestrator. Our technology offers companies access to leading payment capabilities, allowing them to engage customers confidently and maintain global business operations with seamless payment integrations worldwide.\n\nAbout The Role\nWe are orchestrating the best high-performing team!\nIf you are an Engineering Manager passionate about building and scaling world-class teams, joining Yuno will allow you to transform that passion into real high-impact solutions, contributing to our global expansion.\nAs an Engineering Manager, you will lead our Integrations team — a group of engineers responsible for connecting Yuno's platform to PSPs, acquirers, and payment gateways worldwide. You will own the technical direction and delivery of a critical piece of our infrastructure, while growing and developing your team in a fast-moving, global environment.\nYour Contribution Will Be\nLead the technical evolution of Yuno's merchant experience, focused on Core platform, APIs, and payment integrations.\nOwn system and integration architecture connecting backend services and payment flows.\nContribute hands-on to development, architecture decisions, and code reviews.\nEnsure scalab",
+  "id": "016fc224-be91-48f3-8075-3ca86b614b4f",
+  "lists": [],
+  "text": "Engineering Manager - Core Payments",
+  "country": "CO",
+  "workplaceType": "remote",
+  "openingPlain": "",
+  "descriptionBodyPlain": "Latam · Remote · Full Time · Technical Engineering Leader · +5 Years of Experience\n\nWho We Are\nAt Yuno, we are building the payment infrastructure that enables all companies to participate in the global market. Founded by a team of seasoned experts in the payments and IT industries, Yuno provides a high-performance payment orchestrator. Our technology offers companies access to leading payment capabilities, allowing them to engage customers confidently and maintain global business operations with seamless payment integrations worldwide.\n\nAbout The Role\nWe are orchestrating the best high-performing team!\nIf you are an Engineering Manager passionate about building and scaling world-class teams, joining Yuno will allow you to transform that passion into real high-impact solutions, contributing to our global expansion.\nAs an Engineering Manager, you will lead our Integrations team — a group of engineers responsible for connecting Yuno's platform to PSPs, acquirers, and payment gateways worldwide. You will own the technical direction and delivery of a critical piece of our infrastructure, while growing and developing your team in a fast-moving, global environment.\nYour Contribution Will Be\nLead the technical evolution of Yuno's merchant experience, focused on Core platform, APIs, and payment integrations.\nOwn system and integration architecture connecting backend services and payment flows.\nContribute hands-on to development, architecture decisions, and code reviews.\nEnsure scalab",
+  "hostedUrl": "https://jobs.lever.co/yuno/016fc224-be91-48f3-8075-3ca86b614b4f",
+  "applyUrl": "https://jobs.lever.co/yuno/016fc224-be91-48f3-8075-3ca86b614b4f/apply"
+ }
+]

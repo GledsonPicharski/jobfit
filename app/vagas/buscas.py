@@ -29,6 +29,7 @@ _LISTAS = (
 )
 _CONECTIVOS = {"de", "da", "do", "das", "dos", "e", "em", "para", "of", "the", "and", "for", "in"}
 _GLOBAL = ("worldwide", "anywhere", "global", "international", "qualquer lugar")
+_SO_MODALIDADE = {"remote", "remoto", "remota", "fully", "100", "work", "from", "home"}
 # Outros nomes que uma restrição de vaga remota pode usar para incluir o país.
 _ALIASES_PAIS = {
     "brasil": [
@@ -84,6 +85,9 @@ def aceita_restricao(restricoes: list[str], paises: list[str]) -> bool:
     for restricao in restricoes:
         if any(contem(restricao, g) for g in _GLOBAL):
             return True
+        if not set(palavras(restricao).split()) - _SO_MODALIDADE:
+            return True  # "Remote", sem lugar: não restringe
+
         for pais in paises:
             nomes = _ALIASES_PAIS.get(palavras(pais), [pais])
             if any(contem(restricao, nome) for nome in nomes):

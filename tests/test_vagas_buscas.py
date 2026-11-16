@@ -45,6 +45,8 @@ def test_restricao_de_pais_nas_vagas_remotas():
     assert not aceita_restricao(["United States", "Canada"], ["Brasil"])
     assert aceita_restricao(["Portugal"], ["Brasil", "Portugal"])
     assert aceita_restricao(["United States"], [])  # sem países na busca: não filtra
+    assert aceita_restricao(["Remote"], ["Brasil"])  # remoto, sem lugar dito
+    assert not aceita_restricao(["Remote - US"], ["Brasil"])
 
 
 def _f(**campos) -> FiltrosBusca:

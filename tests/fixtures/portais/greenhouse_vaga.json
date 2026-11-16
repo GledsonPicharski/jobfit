@@ -1,0 +1,80 @@
+{
+ "absolute_url": "https://job-boards.greenhouse.io/vtex/jobs/6100504004",
+ "data_compliance": [
+  {
+   "type": "gdpr",
+   "requires_consent": false,
+   "requires_processing_consent": false,
+   "requires_retention_consent": false,
+   "retention_period": null,
+   "demographic_data_consent_applies": true
+  }
+ ],
+ "internal_job_id": 5178261004,
+ "location": {
+  "name": "Rio de Janeiro; São Paulo, Sao Paulo, Brazil"
+ },
+ "metadata": [
+  {
+   "id": 4382224004,
+   "name": "Management Level",
+   "value": "Junior",
+   "value_type": "single_select"
+  },
+  {
+   "id": 4568065004,
+   "name": "Job Emphasis",
+   "value": "Product Support",
+   "value_type": "single_select"
+  }
+ ],
+ "id": 6100504004,
+ "updated_at": "2026-10-28T13:46:24-04:00",
+ "requisition_id": "2141",
+ "title": "Analista Administrativo Tech (Exclusivo para pessoas com deficiência)",
+ "company_name": "VTEX",
+ "first_published": "2026-08-05T10:06:06-04:00",
+ "language": "en",
+ "application_deadline": null,
+ "content": "&lt;p data-path-to-node=&quot;2&quot;&gt;&lt;span style=&quot;font-size: 18pt;&quot;&gt;&lt;strong data-path-to-node=&quot;2&quot; data-index-in-node=&quot;0&quot;&gt;SOBRE A VAGA&lt;/strong&gt;&amp;nbsp;&lt;/span&gt;&lt;/p&gt;\n&lt;p&gt;&amp;nbsp;&lt;/p&gt;\n&lt;p class=&quot;first-token&quot; data-path-to-node=&quot;0&quot;&gt;&lt;span class=&quot;&quot;&gt;Nesta vaga,&lt;/span&gt;&lt;span class=&quot;&quot;&gt; você vai ser a pessoa de referência no suporte técnico do dia a dia e no cuidado com os equipamentos da empresa,&lt;/span&gt;&lt;span class=&quot;&quot;&gt; garantindo que tudo funcione redondinho para o pessoal trabalhar sem travar.&lt;/span&gt;&lt;/p&gt;\n&lt;p&gt;&lt;em&gt;Esta vaga é afirmativa para pessoas com deficiência (PCD) como parte do nosso compromisso em promover um ambiente de trabalho diverso e inclusivo. Acreditamos na geração de oportunidades como ferramenta de mudança e estamos comprometidos em adaptar nossas instalações e ferramentas para garantir a acessibilidade de todos os nossos colaboradores e candidatos. Se você precisar de alguma adequação especial para participar do nosso processo seletivo, por favor, nos informe.&lt;/em&gt;&lt;/p&gt;\n&lt;p&gt;&lt;span style=&quot;font-size: 18pt;&quot;&gt;&lt;strong data-path-to-node=&quot;2&quot; data-index-in-node=&quot;0&quot;&gt;SOBRE O TIME&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt;\n&lt;p&gt;&lt;span class=&quot;&quot;&gt;Nosso time de Suporte de TI atua em um ambiente dinâmico,&lt;/span&gt;&lt;span class=&quot;&quot;&gt; onde as demandas mudam rápido e imprevistos técnicos fazem parte da rotina.&lt;/span&gt;&lt;span class=&quot;&quot;&gt; Trabalhamos de forma bastante colaborativa,&lt;/span&gt;&lt;span class=&quot;&quot;&gt; trocando ideias,&lt;/span&gt; dicas e soluções no dia a dia.&lt;/p&gt;\n&lt;p&gt;&lt;span style=&quot;font-size: 18pt;&quot;&gt;&lt;strong data-path-to-node=&quot;2&quot; data-index-in-node=&quot;0&quot;&gt;Quem é você&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt;\n&lt;p&gt;&amp;nbsp;&lt;/p&gt;\n&lt;ul&gt;\n&lt;li class=&quot;first-token&quot;&gt;\n&lt;p class=&quot;first-token&quot; data-path-to-node=&quot;0,0,0&quot;&gt;&lt;span class=&quot;&quot;&gt;Você tem facilidade com tecnologia e interesse prático em suporte técnico,&lt;/span&gt; curtindo mexer com computadores, montar peças, formatar e instalar sistemas e softwares.&lt;/p&gt;\n&lt;/li&gt;\n&lt;li&gt;\n&lt;p data-path-to-node=&quot;0,1,0&quot;&gt;Você possui boa comunicação interpessoal e paciência para atender os usuários,&lt;span class=&quot;&quot;&gt; explicando soluções técnicas de forma simples e acessível no dia a dia.&lt;/span&gt;&lt;/p&gt;\n&lt;/li&gt;\n&lt;li&gt;\n&lt;p data-path-to-node=&quot;0,2,0&quot;&gt;&lt;span class=&quot;&quot;&gt;Você é proativo(a),&lt;/span&gt; tem senso de urgência e sabe organizar suas tarefas para priorizar os chamados que chegam por chat ou e-mail sem deixar ninguém na mão.&lt;/p&gt;\n&lt;/li&gt;\n&lt;li&gt;\n&lt;p data-path-to-node=&quot;0,3,0&quot;&gt;&lt;span class=&quot;&quot;",
+ "departments": [
+  {
+   "id": 4028740004,
+   "name": "Tech",
+   "child_ids": [
+    4028776004,
+    4028767004,
+    4045366004,
+    4028784004,
+    4028783004,
+    4064547004,
+    4028777004,
+    4045364004,
+    4045365004,
+    4028775004,
+    4028773004,
+    4028772004,
+    4029167004,
+    4028768004,
+    4028769004,
+    4028774004,
+    4046382004,
+    4028785004,
+    4064081004
+   ],
+   "parent_id": null
+  }
+ ],
+ "offices": [
+  {
+   "id": 4014144004,
+   "name": "São Paulo",
+   "location": "São Paulo, Sao Paulo, Brazil",
+   "child_ids": [],
+   "parent_id": 4014142004
+  }
+ ],
+ "ai_disclaimer": null,
+ "include_ai_disclaimer": null,
+ "ai_opt_out_request_url": null
+}

@@ -1,0 +1,103 @@
+"""Leitores de portais: um arquivo por portal, todos com a mesma interface (decisão 0009).
+
+    buscar(consulta, cliente) -> list[VagaBruta]
+    ainda_aberta(url, cliente) -> bool
+
+Os leitores só leem: filtram pelo título em código e devolvem a vaga como veio. Quem
+deduplica, filtra e grava é o scanner. Um erro numa empresa vira aviso e não para as outras;
+um erro no portal inteiro sobe como `ErroPortal`, e o scanner segue para o próximo portal.
+"""
+
+import time
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from typing import Any
+
+import httpx2
+
+from app.vagas.catalogo import Empresa
+from app.vagas.leitura import VagaBruta, limpar_texto
+
+
+class ErroPortal(Exception):
+    pass
+
+
+@dataclass
+class Consulta:
+    titulos: list[str]
+    empresas: list[Empresa] = field(default_factory=list)  # leitores por empresa (ATS)
+    pausa: float = 0.0  # segundos entre requisições ao mesmo portal
+    avisos: list[str] = field(default_factory=list)
+
+    def empresas_do(self, ats: str) -> list[Empresa]:
+        return [e for e in self.empresas if e.ats == ats]
+
+    def pausar(self) -> None:
+        if self.pausa:
+            time.sleep(self.pausa)
+
+
+def obter(cliente: httpx2.Client, url: str) -> httpx2.Response:
+    try:
+        resposta = cliente.get(url)
+    except httpx2.HTTPError as erro:
+        raise ErroPortal(f"sem resposta ({type(erro).__name__})") from erro
+    if resposta.status_code >= 400:
+        raise ErroPortal(f"respondeu com erro {resposta.status_code}")
+    return resposta
+
+
+def obter_json(cliente: httpx2.Client, url: str) -> Any:
+    try:
+        return obter(cliente, url).json()
+    except ValueError as erro:
+        raise ErroPortal("a resposta não veio no formato esperado") from erro
+
+
+def existe(cliente: httpx2.Client, url: str) -> bool:
+    """False só quando o portal diz que a vaga não existe mais (404 ou 410)."""
+    try:
+        resposta = cliente.get(url)
+    except httpx2.HTTPError as erro:
+        raise ErroPortal(f"sem resposta ({type(erro).__name__})") from erro
+    if resposta.status_code in (404, 410):
+        return False
+    if resposta.status_code >= 400:
+        raise ErroPortal(f"respondeu com erro {resposta.status_code}")
+    return True
+
+
+def data_iso(valor: Any) -> str | None:
+    """Data de publicação como ISO: aceita texto ISO ou milissegundos desde 1970."""
+    if valor in (None, ""):
+        return None
+    if isinstance(valor, int | float):
+        return datetime.fromtimestamp(valor / 1000, UTC).isoformat()
+    try:
+        return datetime.fromisoformat(str(valor).replace("Z", "+00:00")).isoformat()
+    except ValueError:
+        return None
+
+
+def montar(
+    texto: str,
+    fonte: str,
+    url: str,
+    *,
+    titulo: str | None,
+    empresa: str | None,
+    local: str | None = None,
+    modalidade: str | None = None,
+    publicada_em: Any = None,
+    restricoes: list[str] | None = None,
+) -> VagaBruta:
+    estruturado = {
+        "titulo": titulo,
+        "empresa": empresa,
+        "local": local,
+        "modalidade": modalidade,
+        "publicada_em": data_iso(publicada_em),
+        "restricoes": [r for r in restricoes or [] if r],
+    }
+    return VagaBruta(limpar_texto(texto), fonte, url, {k: v for k, v in estruturado.items() if v})
