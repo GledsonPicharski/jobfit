@@ -110,6 +110,42 @@ def avaliar_qualidade(
     typer.echo(f"Relatório salvo em {destino}")
 
 
+@cli.command("scan")
+def scan(
+    perfil: Annotated[str | None, typer.Option(help="Slug do perfil; padrão: o último.")] = None,
+    busca: Annotated[int | None, typer.Option(help="Só esta busca salva (o número dela).")] = None,
+    agendada: Annotated[bool, typer.Option(hidden=True)] = False,
+) -> None:
+    """Busca vagas novas nos portais, sem gastar IA (decisão 0009)."""
+    from app.db import banco_do_perfil
+    from app.perfis.servico import ErroPerfil, carregar_perfil
+    from app.vagas.catalogo import carregar_catalogo
+    from app.vagas.scanner import ErroScanner, linhas_do_resumo, varrer
+
+    cfg = carregar_config()
+    slug = perfil or cfg.ultimo_perfil
+    if cfg.pasta_dados is None or not slug:
+        typer.echo("Configure a pasta de dados e crie um perfil no app antes (uv run jobfit).")
+        raise typer.Exit(1)
+    try:
+        dono = carregar_perfil(cfg.pasta_dados, slug)
+        varredura = varrer(
+            dono,
+            banco_do_perfil(slug),
+            cfg.pasta_dados,
+            origem="agendada" if agendada else "cli",
+            busca_id=busca,
+        )
+    except (ErroPerfil, ErroScanner) as erro:
+        typer.echo(str(erro))
+        raise typer.Exit(1) from erro
+    nomes = {p.id: p.nome for p in carregar_catalogo(cfg.pasta_dados).portais}
+    for linha in linhas_do_resumo(varredura, nomes):
+        typer.echo(linha)
+    if varredura.estado == "falhou":
+        raise typer.Exit(1)
+
+
 mcp = typer.Typer(help="Servidor MCP para o Claude Desktop (decisão 0008).")
 cli.add_typer(mcp, name="mcp")
 
