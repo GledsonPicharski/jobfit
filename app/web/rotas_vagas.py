@@ -1,7 +1,6 @@
 """Vagas: critérios (filtros duros), avaliação, forças e lacunas."""
 
 import json
-import re
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Form, HTTPException, Request
@@ -18,7 +17,7 @@ from app.perfis.modelos import Criterios, Perfil
 from app.perfis.servico import salvar_perfil
 from app.vagas import servico
 from app.vagas.avaliacao import ACOES
-from app.vagas.leitura import ErroLeituraVaga, ler_texto, ler_url
+from app.vagas.leitura import ErroLeituraVaga, ler_entrada
 from app.vagas.metadados import MODALIDADES, NIVEIS_INGLES, SENIORIDADES
 from app.vagas.tabelas import Vaga
 from app.validacao import descrever_erro
@@ -40,7 +39,6 @@ templates.env.globals.update(
         "nao_atende": "não atende",
     },
 )
-_URL = re.compile(r"^(https?://)?[\w.-]+\.[a-z]{2,}(/\S*)?$", re.IGNORECASE)
 
 
 def _linhas(texto: str) -> list[str]:
@@ -128,9 +126,8 @@ def ver_vagas(request: Request, perfil: PerfilAtual):
 @router.post("/p/{slug}/vagas", response_class=HTMLResponse)
 def nova_vaga(request: Request, perfil: PerfilAtual, entrada: Annotated[str, Form()] = ""):
     """URL ou texto colado; a mesma vaga de novo abre a que já existe."""
-    limpa = entrada.strip()
     try:
-        bruta = ler_url(limpa) if _URL.match(limpa) else ler_texto(limpa)
+        bruta = ler_entrada(entrada)
     except ErroLeituraVaga as erro:
         return _tela_vagas(request, perfil, str(erro), entrada, 400)
     vaga, nova = servico.registrar_vaga(banco_do_perfil(perfil.slug), bruta)

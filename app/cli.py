@@ -110,5 +110,52 @@ def avaliar_qualidade(
     typer.echo(f"Relatório salvo em {destino}")
 
 
+mcp = typer.Typer(help="Servidor MCP para o Claude Desktop (decisão 0008).")
+cli.add_typer(mcp, name="mcp")
+
+OpcaoPerfil = Annotated[str | None, typer.Option(help="Slug do perfil; padrão: o último aberto.")]
+
+
+@mcp.callback(invoke_without_command=True)
+def servir_mcp(ctx: typer.Context, perfil: OpcaoPerfil = None) -> None:
+    """Roda o servidor em stdio (é o Claude Desktop quem o inicia)."""
+    if ctx.invoked_subcommand:
+        return
+    from app.mcp.servidor import criar_servidor
+
+    criar_servidor(perfil).run("stdio")
+
+
+@mcp.command("instalar")
+def instalar_mcp(perfil: OpcaoPerfil = None) -> None:
+    """Liga o JobFit ao Claude Desktop (feche e abra o Claude Desktop depois)."""
+    from app.mcp import instalacao
+
+    slug = perfil or carregar_config().ultimo_perfil
+    caminho = instalacao.achar_config()
+    if not slug or caminho is None:
+        typer.echo("Crie um perfil no app e instale o Claude Desktop antes.")
+        raise typer.Exit(1)
+    try:
+        instalacao.instalar(caminho, slug)
+    except instalacao.ErroInstalacao as erro:
+        typer.echo(str(erro))
+        raise typer.Exit(1) from erro
+    typer.echo(f"Perfil {slug} ligado ao Claude Desktop em {caminho}.")
+    typer.echo("Feche o Claude Desktop (inclusive na bandeja do sistema) e abra de novo.")
+
+
+@mcp.command("remover")
+def remover_mcp() -> None:
+    """Desliga o JobFit do Claude Desktop."""
+    from app.mcp import instalacao
+
+    caminho = instalacao.achar_config()
+    if caminho is None or not instalacao.remover(caminho):
+        typer.echo("O JobFit não estava ligado ao Claude Desktop.")
+        return
+    typer.echo("JobFit desligado do Claude Desktop. Feche e abra o Claude Desktop.")
+
+
 def main() -> None:
     cli()

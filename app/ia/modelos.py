@@ -54,6 +54,7 @@ class PedidoIA(SQLModel, table=True):
     status: str = "pendente"  # pendente | respondido | cancelado
     tentativas: int = 0
     respondido_em: datetime | None = None
+    respondido_por: str | None = None  # chat | claude_desktop
 
 
 class CacheIA(SQLModel, table=True):

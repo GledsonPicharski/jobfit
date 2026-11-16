@@ -490,6 +490,17 @@ Cada fase só termina com todos os itens dela marcados. Os testes automáticos c
 - [ ] Subir o PDF num leitor de CV gratuito (ou numa candidatura de teste): os campos são lidos.
 - [ ] Você mandaria o CV sem editar mais que detalhes.
 
+### Fase 4b — MCP para o Claude Desktop
+
+- [ ] Em Configurar IA, "Conectar ao Claude Desktop" funciona num clique; depois de reabrir o Claude Desktop, o "jobfit" aparece ativo em Configurações → Desenvolvedor (ou no menu de ferramentas da conversa).
+- [ ] Pedir "avalie esta vaga no JobFit: <link>": a nota e a faixa batem com as da tela da vaga.
+- [ ] Pedir "gere o CV em português dessa vaga": o link abre o rascunho no app, e o PDF é gerado lá.
+- [ ] Se o Claude responder fora do formato, ele mesmo corrige com a mensagem do JobFit, sem você intervir.
+- [ ] Nada do que o Claude recebe tem fatos 🔒 nem os seus dados de contato (confira expandindo a chamada da ferramenta no Claude Desktop).
+- [ ] Abrir um pedido na tela (por exemplo, avaliar uma vaga) e pedir ao Claude "responda o pedido P-XXXX do JobFit": a tela segue sozinha.
+- [ ] O app continua funcionando normalmente com o Claude Desktop aberto ao mesmo tempo.
+- [ ] "Desconectar" tira o JobFit do Claude Desktop e mantém os outros servidores que você tiver.
+
 ### Fase 5 — Candidaturas
 
 - [ ] Mover uma vaga por todos os estados; o histórico registra cada mudança com data.

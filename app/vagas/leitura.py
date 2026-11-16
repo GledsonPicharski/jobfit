@@ -225,3 +225,12 @@ def ler_url(url: str, cliente: httpx2.Client | None = None) -> VagaBruta:
         if host == "jobs.lever.co" and (m := _LEVER.match(partes.path)):
             return _lever(http, m.group(1), m.group(2), url)
         return _pagina(http, url)
+
+
+_PARECE_URL = re.compile(r"^(https?://)?[\w.-]+\.[a-z]{2,}(/\S*)?$", re.IGNORECASE)
+
+
+def ler_entrada(entrada: str) -> VagaBruta:
+    """O que a pessoa trouxe: uma URL (lida pela rede) ou o texto da vaga."""
+    limpa = entrada.strip()
+    return ler_url(limpa) if _PARECE_URL.match(limpa) else ler_texto(limpa)

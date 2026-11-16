@@ -26,6 +26,14 @@
 <a href="/p/{{ perfil.slug }}" role="button" class="secondary">Voltar ao painel</a>
 
 {% else %}
+<div hx-get="/p/{{ perfil.slug }}/pedidos/{{ pedido.id }}/estado?voltar={{ (voltar or '') | urlencode }}"
+     hx-trigger="every 3s" hx-swap="none"></div>
+{% if claude_conectado %}
+<article class="aviso">
+  <strong>Pelo Claude Desktop:</strong> peça a ele <em>"responda o pedido {{ pedido.id }} do JobFit"</em>.
+  Esta tela segue sozinha quando a resposta chegar. Ou siga os passos abaixo, em qualquer chat.
+</article>
+{% endif %}
 <section>
   <h2>1. Copie o pacote</h2>
   <p>

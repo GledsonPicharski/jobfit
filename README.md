@@ -44,6 +44,16 @@ uv run jobfit
 
 Na primeira execução, o app pede a pasta de dados (pode ser dentro do Google Drive para desktop) e depois o primeiro perfil. Não precisa de chave de IA: no modo manual, que é o padrão, o JobFit monta o pedido e você cola no chat que já usa (Claude, ChatGPT ou Gemini, inclusive nas versões grátis). Quem quiser automação pode trocar para o modo API (Anthropic ou OpenRouter); a chave fica no Gerenciador de Credenciais do Windows.
 
+### Usar pelo Claude Desktop
+
+Quem tem o Claude Desktop pode pular o copiar e colar:
+
+1. No JobFit, abra **Configurar IA** (no menu com o seu nome) e clique em **Conectar ao Claude Desktop**.
+2. Feche o Claude Desktop, inclusive o ícone na bandeja perto do relógio, e abra de novo.
+3. No Claude, peça, por exemplo: "avalie esta vaga no JobFit: <link ou texto>" ou "gere o CV em inglês dessa vaga".
+
+O Claude faz a parte de IA pela sua assinatura, e o JobFit confere tudo como no modo manual. A nota sai do código, e cada frase do CV é checada contra o dossiê. Ajustes no dossiê e o PDF do CV continuam no app. Um pedido aberto na tela também pode ser respondido pelo Claude Desktop ("responda o pedido P-XXXX do JobFit"), e a tela segue sozinha. Pela linha de comando: `uv run jobfit mcp instalar` e `uv run jobfit mcp remover`.
+
 ### Para contribuir
 
 ```powershell
