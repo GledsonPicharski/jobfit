@@ -27,10 +27,15 @@ from app.vagas.filtros import ResultadoFiltros, aplicar_filtros
 from app.vagas.leitura import VagaBruta
 from app.vagas.metadados import Metadados, Salario, extrair_metadados, nivel_ingles_declarado
 from app.vagas.nota import Item, calcular_nota, carregar_config
-from app.vagas.tabelas import Ajuste, Avaliacao, Vaga
+from app.vagas.tabelas import Ajuste, Avaliacao, Vaga, VagaOrigem
 from app.validacao import descrever_erro
 
-ESTADOS = {"avaliada": "Avaliada", "quero_aplicar": "Quero aplicar", "descartada": "Descartada"}
+ESTADOS = {
+    "nova": "Nova",
+    "avaliada": "Avaliada",
+    "quero_aplicar": "Quero aplicar",
+    "descartada": "Descartada",
+}
 # O que cada faixa quer dizer, para quem lê a tela (os cortes ficam em config/avaliacao.yaml).
 FAIXAS = {"A": "combina muito", "B": "combina bem", "C": "combina pouco", "D": "não combina"}
 
@@ -75,6 +80,8 @@ def registrar_vaga(engine: Engine, bruta: VagaBruta) -> tuple[Vaga, bool]:
             hash_texto=hash_,
         )
         sessao.add(vaga)
+        sessao.flush()
+        sessao.add(VagaOrigem(vaga_id=vaga.id, portal="colada", url=bruta.url))
         sessao.commit()
         return vaga, True
 

@@ -109,6 +109,19 @@ def test_registrar_vaga_le_metadados_e_reconhece_a_mesma(engine):
     assert registrar_vaga(engine, outra_versao)[0].id == primeira.id
 
 
+def test_vaga_colada_ganha_a_origem_colada(engine):
+    from sqlmodel import Session, select
+
+    from app.vagas.tabelas import VagaOrigem
+
+    url = VagaBruta(texto="Texto da vaga", fonte="pagina", url="https://exemplo.test/vaga/2")
+    vaga, _ = registrar_vaga(engine, url)
+    registrar_vaga(engine, url)  # de novo: não duplica a origem
+    with Session(engine) as sessao:
+        origens = sessao.exec(select(VagaOrigem).where(VagaOrigem.vaga_id == vaga.id)).all()
+    assert [(o.portal, o.url) for o in origens] == [("colada", "https://exemplo.test/vaga/2")]
+
+
 def test_hash_ignora_pontuacao_e_espacos():
     assert hash_texto("Vaga: Python, SQL.") == hash_texto("vaga python  sql")
 
