@@ -1,5 +1,7 @@
 """Catálogo de portais e empresas-alvo: o do repositório mais o local da pessoa."""
 
+import importlib
+
 import pytest
 
 from app.vagas.catalogo import (
@@ -21,6 +23,12 @@ def test_catalogo_do_repositorio_e_valido():
     assert catalogo.portal("linkedin").modo_leitura == "alerta_email"
     assert catalogo.portal("remote-ok").status == "descartado"
     assert catalogo.portal("remote-ok").motivo_descarte
+
+
+def test_todo_portal_ativo_tem_leitor():
+    for portal in carregar_catalogo().ativos():
+        modulo = importlib.import_module(f"app.vagas.portais.{portal.leitor}")
+        assert callable(modulo.buscar) and callable(modulo.ainda_aberta), portal.id
 
 
 def test_empresas_do_repositorio():
