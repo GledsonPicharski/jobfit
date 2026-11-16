@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block titulo %}Buscas · {{ perfil.nome }} · JobFit{% endblock %}
+{% block conteudo %}
+<h1>Buscas</h1>
+<p>O JobFit procura vagas novas nos portais com as suas buscas, junta as repetidas e aplica os
+  filtros, tudo em código, sem gastar IA. As que passam aparecem em
+  <a href="/p/{{ perfil.slug }}/vagas">Vagas</a>, ordenadas por uma pré-nota; você avalia as que quiser.
+  · <a href="/p/{{ perfil.slug }}/portais">Portais</a></p>
+{% if aviso %}<p class="falha">{{ aviso }}</p>{% endif %}
+
+<article>
+  <header><strong>Scan</strong></header>
+  {% include "_varredura.html" %}
+  {% if not rodando %}
+  <form method="post" action="/p/{{ perfil.slug }}/scan">
+    <button type="submit" {% if not buscas %}disabled{% endif %}>Rodar agora</button>
+    <small>Para rodar todo dia sozinho: <code>uv run jobfit agendar</code>.</small>
+  </form>
+  {% endif %}
+</article>
+
+<h2>Suas buscas</h2>
+{% if buscas %}
+<div class="overflow-auto">
+<table>
+  <thead><tr><th>Busca</th><th>Títulos</th><th>Filtros</th><th></th></tr></thead>
+  <tbody>
+    {% for b, f in buscas %}
+    <tr>
+      <td><a href="/p/{{ perfil.slug }}/buscas/{{ b.id }}">{{ b.nome }}</a>{% if not b.ativa %}<br><small>pausada</small>{% endif %}</td>
+      <td><small>{{ f.titulos | join(" · ") }}</small></td>
+      <td><small>
+        {% if f.so_remoto %}só remotas · {% endif %}
+        {% if f.paises %}{{ f.paises | join(", ") }} · {% endif %}
+        {% if f.portais %}{{ f.portais | length }} portal(is){% else %}todos os portais{% endif %}
+        {% if f.empresas_excluidas or f.setores_excluidos or f.palavras_proibidas %} · com exclusões{% endif %}
+        {% if f.palavras_obrigatorias %} · exige {{ f.palavras_obrigatorias | join(", ") }}{% endif %}
+      </small></td>
+      <td><a href="/p/{{ perfil.slug }}/buscas/{{ b.id }}"><small>editar</small></a></td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<p>Nenhuma busca ainda. Crie a primeira com até 5 títulos de vaga.</p>
+{% endif %}
+<a href="/p/{{ perfil.slug }}/buscas/nova" role="button" class="{% if buscas %}outline secondary{% endif %}">Nova busca</a>
+{% endblock %}

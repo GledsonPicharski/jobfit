@@ -293,10 +293,29 @@ def custo_da_avaliacao(engine: Engine, avaliacao: Avaliacao) -> ChamadaIA | None
         return sessao.get(ChamadaIA, avaliacao.chamada_id)
 
 
-def listar_vagas(engine: Engine) -> list[tuple[Vaga, Avaliacao | None]]:
+def listar_vagas(
+    engine: Engine, *, novas: bool | None = None, portal: str | None = None
+) -> list[tuple[Vaga, Avaliacao | None]]:
+    """Todas as vagas, ou só as novas do scan (`novas=True`) ou só as outras (`False`)."""
+    consulta = select(Vaga).order_by(Vaga.criado_em.desc(), Vaga.id.desc())
+    if novas is not None:
+        consulta = consulta.where((Vaga.estado == "nova") == novas)
+    if portal:
+        da_origem = select(VagaOrigem.vaga_id).where(VagaOrigem.portal == portal)
+        consulta = consulta.where(Vaga.id.in_(da_origem))
     with Session(engine, expire_on_commit=False) as sessao:
-        vagas = list(sessao.exec(select(Vaga).order_by(Vaga.criado_em.desc(), Vaga.id.desc())))
+        vagas = list(sessao.exec(consulta))
     return [(v, ultima_avaliacao(engine, v.id)) for v in vagas]
+
+
+def origens_das_vagas(engine: Engine) -> dict[int, list[VagaOrigem]]:
+    """Onde cada vaga foi vista, da primeira origem para a última."""
+    with Session(engine, expire_on_commit=False) as sessao:
+        consulta = select(VagaOrigem).order_by(VagaOrigem.primeira_vez, VagaOrigem.id)
+        origens: dict[int, list[VagaOrigem]] = {}
+        for origem in sessao.exec(consulta):
+            origens.setdefault(origem.vaga_id, []).append(origem)
+    return origens
 
 
 # --- feedback que volta para o dossiê (decisão 0005) ------------------------------

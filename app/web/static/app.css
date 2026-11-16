@@ -80,3 +80,9 @@ article.faixa-esperada button { margin: 0; width: auto; }
 .experiencia-cv { margin: 1rem 0; padding-left: 0.75rem; border-left: 3px solid var(--pico-muted-border-color); }
 .experiencia-cv > input { font-weight: 700; margin-bottom: 0.15rem; }
 .cv-cabecalho { margin-bottom: 1rem; }
+/* Scanner: vagas novas, filtro por portal e vagas encerradas. */
+.filtro-portal { max-width: 22rem; margin-bottom: 1rem; }
+.filtro-portal select { margin: 0; }
+td.acoes-linha { white-space: nowrap; }
+td.acoes-linha a[role="button"], td.acoes-linha form button { margin: 0 0.25rem 0 0; }
+tr.encerrada td { opacity: 0.6; }

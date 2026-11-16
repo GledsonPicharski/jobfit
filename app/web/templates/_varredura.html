@@ -1,0 +1,30 @@
+<div id="varredura" {% if rodando %}hx-get="/p/{{ perfil.slug }}/scan/estado" hx-trigger="every 3s" hx-swap="outerHTML"{% endif %}>
+  {% if rodando %}
+  <p aria-busy="true">Buscando vagas nos portais (começou às {{ rodando.inicio | hora }}). Pode levar alguns minutos; esta tela se atualiza sozinha.</p>
+  {% elif varredura %}
+  <p>Última rodada: {{ varredura.inicio | hora }}{% if varredura.origem == "agendada" %} (agendada){% endif %} ·
+    <strong>{{ varredura.novas }} vaga(s) nova(s)</strong>
+    {% if varredura.novas %}· <a href="/p/{{ perfil.slug }}/vagas#novas">ver</a>{% endif %}
+    {% if varredura.estado == "falhou" %}· <span class="falha">nenhum portal respondeu</span>{% endif %}</p>
+  <details class="expandir"><summary><small>por portal</small></summary>
+    <div class="overflow-auto">
+    <table>
+      <thead><tr><th>Portal</th><th>Trazidas</th><th>Novas</th><th>Repetidas</th><th>Barradas</th><th>Antigas</th></tr></thead>
+      <tbody>
+      {% for portal, r in resumo_por_portal(varredura).items() %}
+        <tr>
+          <td>{{ nomes.get(portal, portal) }}</td>
+          {% if r.pulado %}<td colspan="5"><small>consultado há pouco; fica para a próxima rodada</small></td>
+          {% elif r.erro %}<td colspan="5"><small class="falha">não respondeu: {{ r.erro }}</small></td>
+          {% else %}<td>{{ r.trazidas }}</td><td>{{ r.novas }}</td><td>{{ r.repetidas }}</td><td>{{ r.filtradas }}</td><td>{{ r.antigas }}</td>{% endif %}
+        </tr>
+        {% for aviso in r.avisos %}<tr><td></td><td colspan="5"><small>⚠ {{ aviso }}</small></td></tr>{% endfor %}
+      {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  </details>
+  {% else %}
+  <p>O scan ainda não rodou.</p>
+  {% endif %}
+</div>

@@ -10,6 +10,7 @@ import hashlib
 import importlib
 import json
 import logging
+import threading
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -97,6 +98,55 @@ def linhas_do_resumo(varredura: Varredura, nomes: dict[str, str] | None = None) 
     encerradas = json.loads(varredura.portais).get("_encerradas", 0)
     linhas.append(f"Vagas novas: {varredura.novas}. Vagas que fecharam: {encerradas}.")
     return linhas
+
+
+def ultima_varredura(engine: Engine) -> Varredura | None:
+    with Session(engine, expire_on_commit=False) as sessao:
+        return sessao.exec(select(Varredura).order_by(Varredura.id.desc())).first()
+
+
+def em_andamento(engine: Engine) -> Varredura | None:
+    """A varredura rodando agora. Uma "rodando" de mais de 30 minutos é de um app que
+    fechou no meio: não segura as próximas."""
+    ultima = ultima_varredura(engine)
+    if ultima and ultima.estado == "rodando" and ultima.inicio > agora_utc() - _ABANDONADA:
+        return ultima
+    return None
+
+
+_ABANDONADA = timedelta(minutes=30)
+_rodando: set[str] = set()
+_trava = threading.Lock()
+
+
+def iniciar(perfil: Perfil, engine: Engine, pasta_dados: Path, busca_id: int | None = None) -> bool:
+    """Roda o scan numa thread, para a tela não esperar. False se já há um rodando."""
+    with _trava:
+        if perfil.slug in _rodando or em_andamento(engine):
+            return False
+        _rodando.add(perfil.slug)
+
+    def rodar() -> None:
+        try:
+            varrer(perfil, engine, pasta_dados, origem="tela", busca_id=busca_id)
+        except Exception:
+            log.exception("o scan de %s falhou", perfil.slug)
+            _marcar_falha(engine)
+        finally:
+            with _trava:
+                _rodando.discard(perfil.slug)
+
+    threading.Thread(target=rodar, name=f"scan-{perfil.slug}", daemon=True).start()
+    return True
+
+
+def _marcar_falha(engine: Engine) -> None:
+    with Session(engine) as sessao:
+        consulta = select(Varredura).where(Varredura.estado == "rodando")
+        for varredura in sessao.exec(consulta):
+            varredura.estado, varredura.fim = "falhou", agora_utc()
+            sessao.add(varredura)
+        sessao.commit()
 
 
 # --- portais do perfil ----------------------------------------------------------
