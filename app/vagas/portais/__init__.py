@@ -8,15 +8,17 @@ deduplica, filtra e grava é o scanner. Um erro numa empresa vira aviso e não p
 um erro no portal inteiro sobe como `ErroPortal`, e o scanner segue para o próximo portal.
 """
 
+import html
 import time
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from email.utils import parsedate_to_datetime
 from typing import Any
 
 import httpx2
 
 from app.vagas.catalogo import Empresa
-from app.vagas.leitura import VagaBruta, limpar_texto
+from app.vagas.leitura import VagaBruta, html_para_texto, limpar_texto
 
 
 class ErroPortal(Exception):
@@ -69,15 +71,26 @@ def existe(cliente: httpx2.Client, url: str) -> bool:
 
 
 def data_iso(valor: Any) -> str | None:
-    """Data de publicação como ISO: aceita texto ISO ou milissegundos desde 1970."""
+    """Data de publicação como ISO: aceita texto ISO, RFC 822 (RSS) ou segundos ou
+    milissegundos desde 1970. Sem fuso, vale UTC."""
     if valor in (None, ""):
         return None
     if isinstance(valor, int | float):
-        return datetime.fromtimestamp(valor / 1000, UTC).isoformat()
+        segundos = valor / 1000 if valor > 1e11 else valor
+        return datetime.fromtimestamp(segundos, UTC).isoformat()
+    texto = str(valor).strip()
     try:
-        return datetime.fromisoformat(str(valor).replace("Z", "+00:00")).isoformat()
+        data = datetime.fromisoformat(texto.replace("Z", "+00:00"))
     except ValueError:
-        return None
+        try:
+            data = parsedate_to_datetime(texto)
+        except (TypeError, ValueError):
+            return None
+    return (data if data.tzinfo else data.replace(tzinfo=UTC)).isoformat()
+
+
+def texto_de_html(*partes: str | None) -> str:
+    return "\n\n".join(html_para_texto(html.unescape(p)) for p in partes if p)
 
 
 def montar(
