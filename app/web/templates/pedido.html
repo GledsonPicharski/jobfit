@@ -1,6 +1,15 @@
 {% extends "base.html" %}
 {% block titulo %}Pedido {{ pedido.id }} · JobFit{% endblock %}
 {% block conteudo %}
+{% macro caixa_copiar(id, texto, linhas) %}
+<div class="caixa-copiar">
+  <textarea id="{{ id }}" rows="{{ linhas }}" readonly>{{ texto }}</textarea>
+  <button type="button" class="icone-copiar" data-copiar="{{ id }}" title="Copiar" aria-label="Copiar">
+    <svg class="so-copiar" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+    <svg class="so-copiado" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+  </button>
+</div>
+{% endmacro %}
 <hgroup>
   <h1>Pedido {{ pedido.id }}</h1>
   <p>{{ pedido.tarefa }} v{{ pedido.versao_prompt }} · criado em {{ pedido.criado_em | hora }}</p>
@@ -29,35 +38,35 @@
 <div hx-get="/p/{{ perfil.slug }}/pedidos/{{ pedido.id }}/estado?voltar={{ (voltar or '') | urlencode }}"
      hx-trigger="every 3s" hx-swap="none"></div>
 {% if claude_conectado %}
-<article class="aviso">
-  <strong>Pelo Claude Desktop:</strong> peça a ele <em>"responda o pedido {{ pedido.id }} do JobFit"</em>.
-  Esta tela segue sozinha quando a resposta chegar. Ou siga os passos abaixo, em qualquer chat.
+<article class="caminho">
+  <h2>Responder pelo Claude Desktop</h2>
+  <p>O jeito mais fácil: copie a frase abaixo, cole numa conversa do Claude Desktop e envie.
+    O Claude lê o pedido no JobFit, faz a tarefa e devolve a resposta. Esta tela segue sozinha quando ela chegar.</p>
+  {{ caixa_copiar("frase-claude", "Abra o pedido " ~ pedido.id ~ " do JobFit, faça a tarefa que ele pede e entregue a resposta ao JobFit.", 2) }}
 </article>
 {% endif %}
-<section>
-  <h2>1. Copie o pacote</h2>
-  <p>
-    <button type="button" data-copiar="pacote" data-rotulo="Copiar">Copiar</button>
-    <a href="/p/{{ perfil.slug }}/pedidos/{{ pedido.id }}/pacote.md" role="button" class="secondary">Baixar .md</a>
-  </p>
-  <textarea id="pacote" rows="10" readonly>{{ pedido.pacote }}</textarea>
-  <small>Pacote grande? Baixe o .md e anexe no chat em vez de colar.</small>
-</section>
 
-<section>
-  <h2>2. Cole no chat que você usa</h2>
-  <p>Claude, ChatGPT ou Gemini, inclusive nas versões grátis. Envie e espere a resposta.</p>
-</section>
+<article class="caminho">
+  <h2>{% if claude_conectado %}Ou responder em qualquer chat de IA{% else %}Responder com um chat de IA{% endif %}</h2>
+  <p>Esta tarefa precisa de uma IA. O JobFit montou o pedido com tudo o que ela precisa saber:
+    você copia, cola no chat que já usa (Claude, ChatGPT ou Gemini, inclusive nas versões grátis)
+    e traz a resposta de volta para cá.</p>
 
-<section>
-  <h2>3. Cole aqui a resposta do chat</h2>
+  <h3>1. Copie o pedido</h3>
+  {{ caixa_copiar("pacote", pedido.pacote, 10) }}
+  <small>Pedido grande demais para colar? <a href="/p/{{ perfil.slug }}/pedidos/{{ pedido.id }}/pacote.md">Baixe o arquivo .md</a> e anexe no chat.</small>
+
+  <h3>2. Cole no chat e envie</h3>
+  <p>Numa conversa nova, cole o pedido, envie e espere a resposta terminar.</p>
+
+  <h3>3. Cole aqui a resposta do chat</h3>
+  <p>Copie a resposta inteira do chat (no Claude e no ChatGPT, o ícone de copiar embaixo da resposta) e cole abaixo.</p>
   {% if erro %}
   <article class="falha">
     <strong>Não deu certo.</strong> {{ erro }}
     {% if correcao %}
-    <p>Cole isto no chat para ele corrigir a resposta:</p>
-    <p><button type="button" class="secondary" data-copiar="correcao" data-rotulo="Copiar correção">Copiar correção</button></p>
-    <textarea id="correcao" rows="5" readonly>{{ correcao }}</textarea>
+    <p>Cole isto no mesmo chat para ele corrigir a resposta:</p>
+    {{ caixa_copiar("correcao", correcao, 5) }}
     {% endif %}
   </article>
   {% endif %}
@@ -70,6 +79,6 @@
     <button type="submit" class="secondary outline">Cancelar pedido</button>
   </form>
   {% if pedido.tentativas %}<small>Tentativas: {{ pedido.tentativas }}</small>{% endif %}
-</section>
+</article>
 {% endif %}
 {% endblock %}

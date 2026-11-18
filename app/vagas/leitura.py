@@ -145,6 +145,11 @@ def _greenhouse(cliente: httpx2.Client, quadro: str, vaga_id: str, url: str) -> 
 
 def _lever(cliente: httpx2.Client, empresa: str, vaga_id: str, url: str) -> VagaBruta:
     dados = _buscar(cliente, f"https://api.lever.co/v0/postings/{empresa}/{vaga_id}").json()
+    return vaga_lever(dados, url)
+
+
+def vaga_lever(dados: dict[str, Any], url: str) -> VagaBruta:
+    """Uma vaga da API do Lever (a mesma forma no detalhe e na lista da empresa)."""
     partes = [dados.get("text", ""), dados.get("descriptionPlain", "")]
     for lista in dados.get("lists") or []:
         partes += [lista.get("text", ""), html_para_texto(f"<ul>{lista.get('content', '')}</ul>")]

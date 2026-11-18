@@ -1,0 +1,120 @@
+# Catálogo de portais do JobFit (decisão 0009). Público: nada pessoal aqui.
+# O status de cada pessoa em cada portal (cadastro, lembrete, última checagem) fica no banco do perfil.
+# Portais acrescentados por quem usa ficam em catalogo_local.yaml, na pasta de dados.
+#
+# categoria:    vagas | freela | treinamento_ia | expert_network | docencia | mentoria | headhunter | relocacao
+# modo_leitura: api | feed | pagina_publica | alerta_email | lembrete | contato | manual
+# status:       ativo | em_validacao | descartado
+# leitor:       módulo em app/vagas/portais/ (só para api, feed e pagina_publica ativos)
+# por_empresa:  o leitor lista as vagas de cada empresa de catalogo/empresas.yaml
+
+# --- ATS de empresas -----------------------------------------------------------
+- {id: greenhouse, nome: Greenhouse, categoria: vagas, regiao: [global], url: https://www.greenhouse.com, modo_leitura: api, leitor: greenhouse, por_empresa: true, foco: Global}
+- {id: lever, nome: Lever, categoria: vagas, regiao: [global], url: https://www.lever.co, modo_leitura: api, leitor: lever, por_empresa: true, foco: Global}
+- {id: ashby, nome: Ashby, categoria: vagas, regiao: [global], url: https://www.ashbyhq.com, modo_leitura: api, leitor: ashby, por_empresa: true, foco: "Global, startups; publica salário"}
+- {id: workable, nome: Workable, categoria: vagas, regiao: [global], url: https://www.workable.com, modo_leitura: api, status: em_validacao, foco: Global}
+- {id: smartrecruiters, nome: SmartRecruiters, categoria: vagas, regiao: [global], url: https://www.smartrecruiters.com, modo_leitura: api, status: em_validacao, foco: "Global, grandes empresas"}
+- {id: recruitee, nome: Recruitee, categoria: vagas, regiao: [EU], url: https://recruitee.com, modo_leitura: api, status: em_validacao, foco: Europa}
+- {id: personio, nome: Personio, categoria: vagas, regiao: [EU], url: https://www.personio.com, modo_leitura: feed, status: em_validacao, foco: Europa}
+- {id: teamtailor, nome: Teamtailor, categoria: vagas, regiao: [EU], url: https://www.teamtailor.com, modo_leitura: feed, status: em_validacao, foco: Europa}
+- {id: workday, nome: Workday, categoria: vagas, regiao: [global, CA], url: https://www.workday.com, modo_leitura: pagina_publica, status: em_validacao, foco: "Grandes empresas, Canadá"}
+- {id: gupy, nome: Gupy, categoria: vagas, regiao: [BR], url: https://portal.gupy.io, modo_leitura: api, leitor: gupy, foco: Brasil}
+- {id: inhire, nome: Inhire, categoria: vagas, regiao: [BR], url: https://www.inhire.com.br, modo_leitura: pagina_publica, status: em_validacao, foco: "Brasil, startups"}
+- {id: quickin, nome: Quickin, categoria: vagas, regiao: [BR], url: https://www.quickin.io, modo_leitura: pagina_publica, status: em_validacao, foco: Brasil}
+- {id: solides, nome: Solides Vagas, categoria: vagas, regiao: [BR], url: https://vagas.solides.com.br, modo_leitura: pagina_publica, status: em_validacao, foco: "Brasil, empresas médias"}
+- {id: abler, nome: Abler, categoria: vagas, regiao: [BR], url: https://www.abler.com.br, modo_leitura: pagina_publica, status: em_validacao, foco: Brasil}
+
+# --- Portais gerais --------------------------------------------------------------
+- {id: linkedin, nome: LinkedIn, categoria: vagas, regiao: [global], url: https://www.linkedin.com/jobs, modo_leitura: alerta_email, foco: "Global; link ou texto colado (regra 7)"}
+- {id: indeed, nome: Indeed, categoria: vagas, regiao: [BR, global], url: https://br.indeed.com, modo_leitura: alerta_email, foco: Brasil e global}
+- {id: glassdoor, nome: Glassdoor, categoria: vagas, regiao: [BR, global], url: https://www.glassdoor.com.br, modo_leitura: alerta_email, foco: Brasil e global}
+- {id: vagas-com-br, nome: Vagas.com.br, categoria: vagas, regiao: [BR], url: https://www.vagas.com.br, modo_leitura: alerta_email, foco: Brasil}
+- {id: infojobs, nome: InfoJobs, categoria: vagas, regiao: [BR], url: https://www.infojobs.com.br, modo_leitura: alerta_email, foco: Brasil}
+- {id: catho, nome: Catho, categoria: vagas, regiao: [BR], url: https://www.catho.com.br, modo_leitura: alerta_email, foco: Brasil}
+
+# --- Tecnologia e comunidades no Brasil -----------------------------------------
+- {id: remotar, nome: Remotar, categoria: vagas, regiao: [BR], url: https://remotar.com.br, modo_leitura: feed, status: em_validacao, foco: "Brasil, remoto"}
+- {id: geekhunter, nome: GeekHunter, categoria: vagas, regiao: [BR], url: https://www.geekhunter.com.br, modo_leitura: lembrete, precisa_login: true, foco: Tecnologia}
+- {id: coodesh, nome: Coodesh, categoria: vagas, regiao: [BR], url: https://coodesh.com, modo_leitura: lembrete, precisa_login: true, foco: Tecnologia}
+- {id: programathor, nome: Programathor, categoria: vagas, regiao: [BR], url: https://programathor.com.br, modo_leitura: lembrete, precisa_login: true, foco: Tecnologia}
+- {id: trampos, nome: Trampos.co, categoria: vagas, regiao: [BR], url: https://trampos.co, modo_leitura: feed, status: em_validacao, foco: Marketing e criação}
+- {id: data-hackers, nome: Data Hackers, categoria: vagas, regiao: [BR], url: https://www.datahackers.news, modo_leitura: manual, foco: "Comunidade de dados (canal de vagas)"}
+- {id: pm3, nome: PM3, categoria: vagas, regiao: [BR], url: https://www.cursospm3.com.br, modo_leitura: manual, foco: Comunidade de produto}
+
+# --- Boards remotos ---------------------------------------------------------------
+- {id: himalayas, nome: Himalayas, categoria: vagas, regiao: [global, LATAM], url: https://himalayas.app, modo_leitura: api, leitor: himalayas, foco: "Global; filtro Brasil/LATAM e salário"}
+- {id: remote-rocketship, nome: Remote Rocketship, categoria: vagas, regiao: [global, LATAM], url: https://www.remoterocketship.com, modo_leitura: feed, status: em_validacao, foco: "Filtro LATAM/Brasil e salário"}
+- {id: real-work-from-anywhere, nome: Real Work From Anywhere, categoria: vagas, regiao: [global], url: https://www.realworkfromanywhere.com, modo_leitura: feed, status: em_validacao, foco: Só vagas worldwide}
+- {id: weworkremotely, nome: We Work Remotely, categoria: vagas, regiao: [global], url: https://weworkremotely.com, modo_leitura: feed, leitor: weworkremotely, foco: Categoria Anywhere in the World}
+- {id: remotive, nome: Remotive, categoria: vagas, regiao: [global, LATAM], url: https://remotive.com, modo_leitura: api, leitor: remotive, foco: Worldwide e LATAM}
+- {id: working-nomads, nome: Working Nomads, categoria: vagas, regiao: [global], url: https://www.workingnomads.com, modo_leitura: feed, status: em_validacao, foco: Global}
+- {id: dailyremote, nome: DailyRemote, categoria: vagas, regiao: [global], url: https://dailyremote.com, modo_leitura: feed, status: em_validacao, foco: Filtro de país}
+- {id: wellfound, nome: Wellfound, categoria: vagas, regiao: [global], url: https://wellfound.com, modo_leitura: lembrete, precisa_login: true, foco: Startups}
+- {id: built-in, nome: Built In, categoria: vagas, regiao: [global], url: https://builtin.com, modo_leitura: pagina_publica, status: em_validacao, foco: Vagas remotas no Brasil}
+- {id: getonboard, nome: Get on Board, categoria: vagas, regiao: [LATAM], url: https://www.getonbrd.com, modo_leitura: api, leitor: getonboard, foco: "LATAM, espanhol"}
+- {id: torre, nome: Torre, categoria: vagas, regiao: [LATAM], url: https://torre.ai, modo_leitura: pagina_publica, status: em_validacao, foco: LATAM}
+- {id: remoters, nome: Remoters, categoria: vagas, regiao: [EU, LATAM], url: https://remoters.net, modo_leitura: pagina_publica, status: em_validacao, foco: Espanha e LATAM}
+- {id: landing-jobs, nome: Landing.Jobs, categoria: vagas, regiao: [EU], url: https://landing.jobs, modo_leitura: pagina_publica, status: em_validacao, foco: "Portugal, aceita Brasil"}
+- {id: jobgether, nome: Jobgether, categoria: vagas, regiao: [global], url: https://jobgether.com, modo_leitura: manual, foco: "Só descoberta; exige o link direto da empresa"}
+
+# --- Freela e alocação --------------------------------------------------------------
+- {id: toptal, nome: Toptal, categoria: freela, regiao: [US, global], url: https://www.toptal.com, modo_leitura: lembrete, precisa_login: true, foco: "EUA, remoto"}
+- {id: braintrust, nome: Braintrust, categoria: freela, regiao: [global], url: https://www.usebraintrust.com, modo_leitura: lembrete, precisa_login: true, foco: Global}
+- {id: a-team, nome: A.Team, categoria: freela, regiao: [global], url: https://www.a.team, modo_leitura: lembrete, precisa_login: true, foco: Global}
+- {id: arc, nome: Arc, categoria: freela, regiao: [global], url: https://arc.dev, modo_leitura: lembrete, precisa_login: true, foco: Global}
+- {id: proxify, nome: Proxify, categoria: freela, regiao: [EU, US], url: https://proxify.io, modo_leitura: alerta_email, foco: Europa e EUA}
+- {id: revelo, nome: Revelo, categoria: freela, regiao: [US], url: https://www.revelo.com, modo_leitura: lembrete, precisa_login: true, foco: Empresas dos EUA}
+- {id: upwork, nome: Upwork, categoria: freela, regiao: [global], url: https://www.upwork.com, modo_leitura: lembrete, precisa_login: true, foco: Global}
+- {id: workana, nome: Workana, categoria: freela, regiao: [LATAM], url: https://www.workana.com, modo_leitura: lembrete, precisa_login: true, foco: LATAM}
+- {id: crossover, nome: Crossover, categoria: vagas, regiao: [global], url: https://www.crossover.com, modo_leitura: lembrete, precisa_login: true, foco: "Emprego remoto; só plano B"}
+
+# --- Treinamento de IA ----------------------------------------------------------------
+- {id: mercor, nome: Mercor, categoria: treinamento_ia, regiao: [global], url: https://www.mercor.com, modo_leitura: lembrete, precisa_login: true, foco: Global}
+- {id: micro1, nome: Micro1, categoria: treinamento_ia, regiao: [global], url: https://www.micro1.ai, modo_leitura: lembrete, precisa_login: true, foco: Global}
+- {id: alignerr, nome: Alignerr, categoria: treinamento_ia, regiao: [global], url: https://www.alignerr.com, modo_leitura: lembrete, precisa_login: true, foco: Global}
+- {id: outlier, nome: Outlier, categoria: treinamento_ia, regiao: [global], url: https://outlier.ai, modo_leitura: lembrete, precisa_login: true, foco: Global}
+- {id: mindrift, nome: Mindrift, categoria: treinamento_ia, regiao: [global], url: https://mindrift.ai, modo_leitura: lembrete, precisa_login: true, foco: Global}
+- {id: aitrainer-work, nome: aitrainer.work, categoria: treinamento_ia, regiao: [global], url: https://aitrainer.work, modo_leitura: lembrete, precisa_login: true, foco: Global}
+
+# --- Expert networks, docência e mentoria ---------------------------------------------
+- {id: glg, nome: GLG, categoria: expert_network, regiao: [global], url: https://glginsights.com, modo_leitura: alerta_email, foco: Global}
+- {id: alphasights, nome: AlphaSights, categoria: expert_network, regiao: [global], url: https://www.alphasights.com, modo_leitura: alerta_email, foco: Global}
+- {id: guidepoint, nome: Guidepoint, categoria: expert_network, regiao: [global], url: https://www.guidepoint.com, modo_leitura: alerta_email, foco: Global}
+- {id: udacity, nome: Udacity (mentor e revisor), categoria: docencia, regiao: [global], url: https://www.udacity.com, modo_leitura: api, status: em_validacao, foco: "Global; quadro no Greenhouse (entra como empresa)"}
+- {id: mentorcruise, nome: MentorCruise, categoria: mentoria, regiao: [global], url: https://mentorcruise.com, modo_leitura: alerta_email, foco: Mentoria paga}
+- {id: editais-ensino, nome: Editais de instituições de ensino, categoria: docencia, regiao: [BR], modo_leitura: manual, foco: Brasil}
+
+# --- Relocação e Canadá ------------------------------------------------------------------
+- {id: vanhack, nome: VanHack, categoria: relocacao, regiao: [CA, EU], url: https://vanhack.com, modo_leitura: lembrete, precisa_login: true, foco: Canadá e Europa}
+- {id: relocate-me, nome: Relocate.me, categoria: relocacao, regiao: [CA, EU], url: https://relocate.me, modo_leitura: pagina_publica, status: em_validacao, foco: Canadá e Europa}
+- {id: job-bank, nome: Job Bank, categoria: relocacao, regiao: [CA], url: https://www.jobbank.gc.ca, modo_leitura: pagina_publica, status: em_validacao, foco: Governo do Canadá}
+- {id: aip-rcip, nome: Listas de empregadores AIP e RCIP, categoria: relocacao, regiao: [CA], modo_leitura: manual, status: em_validacao, foco: "Arquivos públicos, cruzados com a empresa da vaga"}
+- {id: lmia, nome: Positive LMIA Employers List, categoria: relocacao, regiao: [CA], url: https://open.canada.ca, modo_leitura: manual, status: em_validacao, foco: Dataset aberto}
+
+# --- Headhunters ---------------------------------------------------------------------------
+- {id: headhunters-globais, nome: "Michael Page, Robert Half, Hays, Korn Ferry", categoria: headhunter, regiao: [BR, global], modo_leitura: contato, foco: Brasil e global}
+- {id: headhunters-brasil, nome: "Exec, Fesa, Talenses, Wide, Yoctoo", categoria: headhunter, regiao: [BR], modo_leitura: contato, foco: Brasil}
+
+# --- Descartados (26/10/2026), para ninguém reativar sem saber por quê ---------------------
+- {id: remote-ok, nome: Remote OK, categoria: vagas, regiao: [US], modo_leitura: feed, status: descartado, motivo_descarte: "Redundante, foco nos EUA ou baixa qualidade"}
+- {id: remote-co, nome: Remote.co, categoria: vagas, regiao: [US], modo_leitura: feed, status: descartado, motivo_descarte: "Redundante, foco nos EUA ou baixa qualidade"}
+- {id: skipthedrive, nome: SkipTheDrive, categoria: vagas, regiao: [US], modo_leitura: feed, status: descartado, motivo_descarte: "Redundante, foco nos EUA ou baixa qualidade"}
+- {id: remote-io, nome: Remote.io, categoria: vagas, regiao: [US], modo_leitura: feed, status: descartado, motivo_descarte: "Redundante, foco nos EUA ou baixa qualidade"}
+- {id: workew, nome: Workew, categoria: vagas, regiao: [US], modo_leitura: feed, status: descartado, motivo_descarte: "Redundante, foco nos EUA ou baixa qualidade"}
+- {id: nodesk, nome: NoDesk, categoria: vagas, regiao: [US], modo_leitura: feed, status: descartado, motivo_descarte: "Redundante, foco nos EUA ou baixa qualidade"}
+- {id: jobspresso, nome: Jobspresso, categoria: vagas, regiao: [US], modo_leitura: feed, status: descartado, motivo_descarte: "Redundante, foco nos EUA ou baixa qualidade"}
+- {id: truly-remote, nome: Truly Remote, categoria: vagas, regiao: [US], modo_leitura: feed, status: descartado, motivo_descarte: "Redundante, foco nos EUA ou baixa qualidade"}
+- {id: remote-first-jobs, nome: Remote First Jobs, categoria: vagas, regiao: [US], modo_leitura: feed, status: descartado, motivo_descarte: "Redundante, foco nos EUA ou baixa qualidade"}
+- {id: we-are-distributed, nome: We Are Distributed, categoria: vagas, regiao: [US], modo_leitura: feed, status: descartado, motivo_descarte: "Redundante, foco nos EUA ou baixa qualidade"}
+- {id: letsworkremotely, nome: letsworkremotely, categoria: vagas, regiao: [US], modo_leitura: feed, status: descartado, motivo_descarte: "Redundante, foco nos EUA ou baixa qualidade"}
+- {id: dynamite-jobs, nome: Dynamite Jobs, categoria: vagas, regiao: [US], modo_leitura: feed, status: descartado, motivo_descarte: "Redundante, foco nos EUA ou baixa qualidade"}
+- {id: hidden-jobs, nome: Hidden Jobs, categoria: vagas, regiao: [US], modo_leitura: feed, status: descartado, motivo_descarte: "Redundante, foco nos EUA ou baixa qualidade"}
+- {id: flexjobs, nome: FlexJobs, categoria: vagas, regiao: [US], modo_leitura: lembrete, status: descartado, motivo_descarte: Pago para o candidato}
+- {id: remoteleaf, nome: RemoteLeaf, categoria: vagas, regiao: [global], modo_leitura: lembrete, status: descartado, motivo_descarte: Pago para o candidato}
+- {id: eu-remote-jobs, nome: EU Remote Jobs, categoria: vagas, regiao: [EU], modo_leitura: feed, status: descartado, motivo_descarte: Exige residência na UE ou no Reino Unido}
+- {id: flexa, nome: Flexa, categoria: vagas, regiao: [EU], modo_leitura: feed, status: descartado, motivo_descarte: Exige residência na UE ou no Reino Unido}
+- {id: careerflow, nome: Careerflow, categoria: vagas, regiao: [global], modo_leitura: manual, status: descartado, motivo_descarte: "Ferramenta de CV, não é board"}
+- {id: whynotremote, nome: whynotremote, categoria: vagas, regiao: [global], modo_leitura: feed, status: descartado, motivo_descarte: Agregador sem link direto da empresa}
+- {id: remotedxb, nome: remotedxb, categoria: vagas, regiao: [global], modo_leitura: feed, status: descartado, motivo_descarte: Agregador sem link direto da empresa}
+- {id: growthtalent, nome: growthtalent, categoria: vagas, regiao: [global], modo_leitura: feed, status: descartado, motivo_descarte: Agregador sem link direto da empresa}
+- {id: ecommerceguide, nome: ecommerceguide, categoria: vagas, regiao: [global], modo_leitura: feed, status: descartado, motivo_descarte: Agregador sem link direto da empresa}

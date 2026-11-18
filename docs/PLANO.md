@@ -521,10 +521,14 @@ Cada fase só termina com todos os itens dela marcados. Os testes automáticos c
 - [ ] Desligar a internet no meio: os portais com erro são registrados e os outros continuam.
 - [ ] Adicionar um portal novo pela interface e vê-lo na próxima busca.
 - [ ] O custo de IA da busca é zero até alguma vaga passar nos filtros.
-- [ ] As métricas do portal mudam depois de registrar uma candidatura e uma entrevista.
+- [ ] As métricas do portal mudam depois de marcar uma vaga como "quero aplicar" (candidatura e entrevista entram na Fase 5).
 - [ ] Agendar a busca diária no Agendador de Tarefas do Windows (`jobfit agendar`) e conferir no dia seguinte.
 - [ ] Criar uma busca salva com uma empresa excluída e uma palavra obrigatória: nenhuma vaga dessa empresa, e todas com a palavra.
 - [ ] Duas buscas salvas com resultados em comum não geram duplicatas.
+- [ ] Colar uma vaga que o scan traz depois: ela não se repete e ganha a origem do portal.
+- [ ] As novas aparecem pela pré-nota, e as de pré-nota baixa ficam escondidas até "Mostrar todas".
+- [ ] Definir a frequência do lembrete de um portal com login: o Início avisa quando vence, e "Marquei como checado" tira o aviso.
+- [ ] Pelo Claude Desktop, pedir "avalie as 3 melhores vagas novas do JobFit".
 
 ### Fase 7 — Revisão do LinkedIn
 

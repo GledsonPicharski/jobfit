@@ -1,0 +1,107 @@
+{
+ "apiVersion": "1",
+ "jobs": [
+  {
+   "id": "20ae8a5c-6692-41f1-8567-a0446a3a5983",
+   "title": "Senior Software Engineer - BR",
+   "department": "Engineer",
+   "team": "Engineer",
+   "employmentType": "FullTime",
+   "location": "São Paulo",
+   "shouldDisplayCompensationOnJobPostings": false,
+   "secondaryLocations": [
+    {
+     "location": "Campinas",
+     "address": {
+      "postalAddress": {
+       "addressRegion": "São Paulo",
+       "addressCountry": "Brazil",
+       "addressLocality": "Campinas"
+      }
+     }
+    },
+    {
+     "location": "Belo Horizonte",
+     "address": {
+      "postalAddress": {
+       "addressRegion": "Minas Gerais",
+       "addressCountry": "Brazil",
+       "addressLocality": "Belo Horizonte"
+      }
+     }
+    },
+    {
+     "location": "Rio de Janeiro",
+     "address": {
+      "postalAddress": {
+       "addressRegion": "Rio de Janeiro",
+       "addressCountry": "Brazil",
+       "addressLocality": "Rio de Janeiro"
+      }
+     }
+    }
+   ],
+   "publishedAt": "2026-07-19T23:15:05.812+00:00",
+   "isListed": true,
+   "isRemote": true,
+   "workplaceType": "Hybrid",
+   "address": {
+    "postalAddress": {
+     "addressRegion": "São Paulo",
+     "addressCountry": "Brazil",
+     "addressLocality": "São Paulo"
+    }
+   },
+   "jobUrl": "https://jobs.ashbyhq.com/nubank/20ae8a5c-6692-41f1-8567-a0446a3a5983",
+   "applyUrl": "https://jobs.ashbyhq.com/nubank/20ae8a5c-6692-41f1-8567-a0446a3a5983/application",
+   "descriptionPlain": "ABOUT NU\n\nNu serves more than 140 million customers, guided by a mission to fight complexity and empower people. The company has been leading an industry transformation through innovative products and human-centered services.\n\n \n\nProprietary technology and data at scale power Nu’s digital platform, built to promote financial access, advancement, and transparency. Its business model thrives on customer love and lower costs, feeding a flywheel of growth and profitability.\n\nVisit our Institutional Page https://www.nu.com/2026-en\n\n\n\nEngineering at Nubank\n\nAt Nubank, software engineers sit at the intersection of data, intelligence, and scale. We build systems that process millions of decisions daily, from fraud detection to credit modeling  and increasingly, we do this powered by AI. Machine learning is embedded across our core products: in how we assess risk, personalize experiences, and automate decisions at scale. Engineers here don't just consume AI capabilities; they help shape how intelligence is built, deployed, and maintained in production.\n\nWe do it with engineering rigor, autonomy, and a deep focus on impact. Our engineers work across the full spectrum: designing data pipelines and architectures, deploying and maintaining ML models in production, and building the distributed systems and platforms that power our products. We value small, independent teams that move fast, own their decisions end-to-end, and hold themselves to a high bar for quality and craft.\n\nWe strive for state-of-the-art software development practices across our entire stack. While we value candidates familiar with our technologies, we're confident that engineers who join Nubank will learn and grow alongside our team:\n\n - Horizontally scalable microservices written mostly in Clojure, leveraging functional programming and hexagonal architecture\n\n - High-throughput event-driven architectures for inter-service communication\n\n - Continuous Integration and Deployment into cloud-native infrastructure\n\n - Distributed transactional systems built on Datomic, modeling complex business domains with immutable data and strong consistency\n\n - Modern data platforms built on ETL/ELT best practices, with robust monitoring and observability\n   \n\n\nOUR SOFTWARE ENGINEERS   \n\n - Work with large scale distributed systems\n\n - Collaborate with building microservices\n\n - Design, build and maintain robust data pipelines, distributed systems and ML-enabled solutions, ensuring reliability, scalability and perfo",
+   "compensation": {
+    "compensationTierSummary": null,
+    "scrapeableCompensationSalarySummary": null,
+    "compensationTiers": [],
+    "summaryComponents": []
+   }
+  },
+  {
+   "id": "ce6b809f-687c-4efa-98cf-e737cd0f6bf6",
+   "title": "Head of Risk US",
+   "department": "Executive",
+   "team": "Executive",
+   "employmentType": "FullTime",
+   "location": "Miami",
+   "shouldDisplayCompensationOnJobPostings": false,
+   "secondaryLocations": [
+    {
+     "location": "Virginia",
+     "address": {
+      "postalAddress": {
+       "addressRegion": "Virginia",
+       "addressCountry": "United States",
+       "addressLocality": "Virginia"
+      }
+     }
+    }
+   ],
+   "publishedAt": "2026-11-09T21:05:02.549+00:00",
+   "isListed": true,
+   "isRemote": true,
+   "workplaceType": "Hybrid",
+   "address": {
+    "postalAddress": {
+     "addressRegion": "Florida",
+     "addressCountry": "United States",
+     "addressLocality": "Miami"
+    }
+   },
+   "jobUrl": "https://jobs.ashbyhq.com/nubank/ce6b809f-687c-4efa-98cf-e737cd0f6bf6",
+   "applyUrl": "https://jobs.ashbyhq.com/nubank/ce6b809f-687c-4efa-98cf-e737cd0f6bf6/application",
+   "descriptionPlain": "ABOUT NU\n\nNu serves more than 140 million customers, guided by a mission to fight complexity and empower people. The company has been leading an industry transformation through innovative products and human-centered services.\n\n \n\nProprietary technology and data at scale power Nu’s digital platform, built to promote financial access, advancement, and transparency. Its business model thrives on customer love and lower costs, feeding a flywheel of growth and profitability.\n\nVisit our Institutional Page https://www.nu.com/2026-en\n\n\nABOUT THE TEAM\n\nThe Global Risk function at Nu is structured around two dimensions: country risk officers (horizontal) and global functional heads by risk discipline (vertical). This matrix creates a \"risk surface\" that allows the organization to scale efficiently without duplicating senior expertise across geographies.\n\nThe Head of Risk US will lead the US risk surface, owning all risk disciplines locally while maintaining close coordination with global functional heads: Global Credit Risk, the Global Market and Liquidity Head, and other risk domain leads.\n\nThe US risk team is in its early stages, with existing members covering Compliance, Financial Crime/AML, Regulatory, and is expected to grow in line with the business. This is a build-from-scratch opportunity for a senior executive who thrives in dynamic, high-growth environments.\n\n\n\n\nABOUT THE ROLE\n\nThe Head of Risk US is a senior executive responsible for the effective and independent oversight of all risk disciplines within Nu's US operation. \n\nThe role requires a leader who understands the US regulatory landscape deeply, can engage independently with regulators and senior governance bodies, and is capable of building a high-performing risk function in a fast-moving fintech environment. \n\nThis is a high-visibility, high-impact position that will interact frequently with the US Board/Risk Committee, senior regulators, and Nu's executive leadership team.\n\n\n\n\nKEY RESPONSIBILITIES AND EXPECTATIONS\n\nRisk Framework & Governance\n\n - Build and lead a comprehensive risk management framework for the US operation, covering credit, market, liquidity, operational, financial crime, and compliance risk.\n\n - Develop a risk appetite framework and limit structure aligned with the US Board's stated risk tolerance, ensuring all business lines operate within defined parameters.\n\n - Establish robust risk metrics, reporting dashboards, and early warning indicators to monitor exposures and escalate ",
+   "compensation": {
+    "compensationTierSummary": null,
+    "scrapeableCompensationSalarySummary": null,
+    "compensationTiers": [],
+    "summaryComponents": []
+   }
+  }
+ ]
+}

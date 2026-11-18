@@ -95,9 +95,11 @@ O catálogo também guarda o que foi descartado, para nenhum usuário reativar s
 | Careerflow | Ferramenta de CV, não é board |
 | whynotremote, remotedxb, growthtalent, ecommerceguide | Agregadores sem link direto da empresa |
 
-## Para completar na Fase 6
+## Fase 6
 
-- [ ] Ler `docs/SUPPORTED_JOB_BOARDS.md` e a pasta `providers/` do career-ops (55+ módulos) e trazer os que fizerem sentido para Brasil e remoto.
-- [ ] Aproveitar a lista de 100+ empresas de `templates/portals.example.yml` do career-ops para montar as listas de empresas-alvo.
-- [ ] Confirmar, para cada entrada "Feed (validar)" e "Página pública (validar)", se o feed existe e se os termos permitem leitura automática.
-- [ ] Migrar do Notion o status pessoal de cada portal (cadastro, frequência, última checagem) para o banco de cada perfil.
+O catálogo virou `catalogo/portais.yaml`, e as empresas-alvo, `catalogo/empresas.yaml`. As fontes lidas e o que os termos de cada uma dizem estão na decisão 0009.
+
+- [x] Aproveitar a lista de empresas de `templates/portals.example.yml` do career-ops: 40 empresas com quadro público no Greenhouse, Lever ou Ashby e vagas remotas, na América Latina ou no Brasil, conferidas em 15/11/2026.
+- [x] Validar os leitores desta fase: Greenhouse, Lever, Ashby, Gupy, Remotive, We Work Remotely, Himalayas e Get on Board.
+- [ ] Ler os outros leitores do career-ops (`providers/`) e validar as entradas que continuam "em validação": Workable, SmartRecruiters, Recruitee, Personio, Teamtailor, Inhire, Solides, Remotar e outras. Um portal novo é um arquivo em `app/vagas/portais/` mais um teste com resposta gravada.
+- [ ] Migrar do Notion o status pessoal de cada portal (cadastro, frequência, última checagem): fica para a Fase 5, junto com a importação do Notion.

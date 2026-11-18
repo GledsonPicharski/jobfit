@@ -225,7 +225,27 @@ async def avaliar_vaga(
     return resumo_da_avaliacao(ctx, engine, registrada, avaliacao) + _aviso_de_custo(perfil)
 
 
-def listar(ctx: Contexto, limite: int = 20) -> str:
+def listar_novas(ctx: Contexto, limite: int = 20) -> str:
+    """As vagas trazidas pelo scan e ainda não avaliadas, da maior pré-nota para a menor."""
+    novas = [v for v, _ in vagas.listar_vagas(ctx.engine(), novas=True) if v.aberta is not False]
+    novas.sort(key=lambda v: (-(v.prenota or 0), v.id))
+    if not novas:
+        return "Nenhuma vaga nova do scan esperando avaliação. O scan roda no app (Buscas)."
+    linhas = []
+    for vaga in novas[:limite]:
+        empresa = f" · {vaga.empresa}" if vaga.empresa else ""
+        prenota = f"pré-nota {vaga.prenota}" if vaga.prenota is not None else "sem pré-nota"
+        linhas.append(f"- vaga_id={vaga.id}: {vaga.titulo or 'sem título'}{empresa} · {prenota}")
+    return (
+        f"{len(novas)} vaga(s) nova(s) do scan, ainda sem avaliação. A pré-nota é uma estimativa "
+        "por palavras, em código; a nota de verdade sai de avaliar_vaga(vaga_id=...).\n"
+        + "\n".join(linhas)
+    )
+
+
+def listar(ctx: Contexto, limite: int = 20, novas: bool = False) -> str:
+    if novas:
+        return listar_novas(ctx, limite)
     lista = vagas.listar_vagas(ctx.engine())[:limite]
     if not lista:
         return "Nenhuma vaga no JobFit ainda. Mande uma URL ou um texto para avaliar_vaga."

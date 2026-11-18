@@ -2,6 +2,8 @@
 {% block titulo %}Vagas · {{ perfil.nome }} · JobFit{% endblock %}
 {% block conteudo %}
 <h1>Vagas</h1>
+<p><small><a href="/p/{{ perfil.slug }}/buscas">Buscas</a>: o JobFit procura vagas novas nos portais para você, sem gastar IA.
+  · <a href="/p/{{ perfil.slug }}/portais">Portais</a></small></p>
 
 <article>
   <form method="post" action="/p/{{ perfil.slug }}/vagas">
@@ -15,6 +17,53 @@
   </form>
 </article>
 
+{% macro origens_da(vaga) %}{% for o in origens.get(vaga.id, []) %}{{ nomes.get(o.portal, o.portal) }}{% if not loop.last %}, {% endif %}{% endfor %}{% endmacro %}
+
+{% if portais_vistos | length > 1 %}
+<form method="get" action="/p/{{ perfil.slug }}/vagas" class="filtro-portal">
+  <select name="portal" aria-label="Filtrar por portal" hx-get="/p/{{ perfil.slug }}/vagas" hx-trigger="change" hx-target="body" hx-push-url="true">
+    <option value="">Todos os portais</option>
+    {% for p in portais_vistos %}<option value="{{ p }}" {% if p == portal %}selected{% endif %}>{{ nomes.get(p, p) }}</option>{% endfor %}
+  </select>
+  <noscript><button type="submit" class="pequeno">Filtrar</button></noscript>
+</form>
+{% endif %}
+
+{% if novas or escondidas %}
+<h2 id="novas">Novas <small>({{ novas | length }})</small></h2>
+<p><small>Trazidas pelo scan e ainda não avaliadas, da maior pré-nota para a menor. A pré-nota é uma
+  estimativa por palavras (quanto dos termos da vaga aparece no seu dossiê), calculada no seu computador;
+  a nota de verdade vem da avaliação.</small></p>
+<div class="overflow-auto">
+<table class="vagas">
+  <thead><tr><th>Vaga</th><th>Pré-nota</th><th>De onde</th><th></th></tr></thead>
+  <tbody>
+    {% for vaga in novas %}
+    <tr{% if vaga.aberta is false %} class="encerrada"{% endif %}>
+      <td><a href="/p/{{ perfil.slug }}/vagas/{{ vaga.id }}">{{ vaga.titulo or "Vaga sem título" }}</a>
+        <br><small>{% if vaga.empresa %}{{ vaga.empresa }}{% endif %}{% if vaga.local %} · {{ vaga.local }}{% endif %}
+        {% if vaga.aberta is false %} · <strong>encerrada</strong>{% endif %}</small></td>
+      <td>{% if vaga.prenota is not none %}{{ vaga.prenota }}{% else %}<small>—</small>{% endif %}</td>
+      <td><small>{{ origens_da(vaga) }}{% if vaga.publicada_em %}<br>publicada {{ vaga.publicada_em | hora }}{% endif %}</small></td>
+      <td class="acoes-linha">
+        <a href="/p/{{ perfil.slug }}/vagas/{{ vaga.id }}/avaliar" role="button" class="pequeno">Avaliar</a>
+        <form method="post" action="/p/{{ perfil.slug }}/vagas/{{ vaga.id }}/estado" class="em-linha">
+          <input type="hidden" name="estado" value="descartada">
+          <input type="hidden" name="voltar" value="lista">
+          <button type="submit" class="outline secondary pequeno">Descartar</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% if escondidas %}<p><small>{{ escondidas }} vaga(s) nova(s) com pré-nota abaixo de {{ prenota_minima }} não aparecem.
+  <a href="/p/{{ perfil.slug }}/vagas?todas=1{% if portal %}&portal={{ portal }}{% endif %}#novas">Mostrar todas</a></small></p>
+{% elif todas %}<p><small><a href="/p/{{ perfil.slug }}/vagas{% if portal %}?portal={{ portal }}{% endif %}#novas">Esconder as de pré-nota baixa</a></small></p>{% endif %}
+{% if vagas %}<h2>Avaliadas</h2>{% endif %}
+{% endif %}
+
 {% if vagas %}
 <div class="overflow-auto">
 <table class="vagas">
@@ -23,7 +72,7 @@
     {% for vaga, av in vagas %}
     <tr>
       <td><a href="/p/{{ perfil.slug }}/vagas/{{ vaga.id }}">{{ vaga.titulo or "Vaga sem título" }}</a>
-        {% if vaga.empresa %}<br><small>{{ vaga.empresa }}</small>{% endif %}</td>
+        {% if vaga.empresa %}<br><small>{{ vaga.empresa }}{% if vaga.aberta is false %} · <strong>encerrada</strong>{% endif %}</small>{% endif %}</td>
       <td>
         {% if av and av.bloqueada %}<small>barrada pelos filtros</small>
         {% elif av and av.faixa %}<span class="faixa faixa-{{ av.faixa }}">{{ av.faixa }}</span> {{ av.nota }}
@@ -36,8 +85,9 @@
   </tbody>
 </table>
 </div>
-{% else %}
-<p>Nenhuma vaga ainda. Cole o link ou o texto de uma vaga acima.</p>
+{% elif not novas %}
+<p>Nenhuma vaga ainda. Cole o link ou o texto de uma vaga acima, ou crie uma
+  <a href="/p/{{ perfil.slug }}/buscas">busca</a> para o JobFit procurar nos portais.</p>
 {% endif %}
 
 {% if concordancia %}

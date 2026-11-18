@@ -1,0 +1,53 @@
+# Empresas-alvo dos leitores por empresa (Greenhouse, Lever, Ashby). Decisão 0009.
+# Semeado a partir da lista do career-ops e conferido ao vivo em 15/11/2026: todas tinham
+# quadro público com vagas remotas, na América Latina ou no Brasil.
+# As suas empresas ficam em catalogo_local.yaml, na pasta de dados (tela Portais).
+#
+# quadro: o identificador da empresa no ATS (boards.greenhouse.io/<quadro>,
+#         jobs.lever.co/<quadro>, jobs.ashbyhq.com/<quadro>).
+
+# Brasil e América Latina
+- {nome: BTG Pactual, ats: greenhouse, quadro: btgpactual, regiao: [BR]}
+- {nome: Clara, ats: greenhouse, quadro: clara, regiao: [BR, LATAM]}
+- {nome: EBANX, ats: greenhouse, quadro: ebanx, regiao: [BR]}
+- {nome: Jusbrasil, ats: greenhouse, quadro: jusbrasil, regiao: [BR]}
+- {nome: Nubank, ats: ashby, quadro: nubank, regiao: [BR, LATAM]}
+- {nome: QuintoAndar, ats: greenhouse, quadro: quintoandar, regiao: [BR]}
+- {nome: Stone, ats: greenhouse, quadro: stone, regiao: [BR]}
+- {nome: VTEX, ats: greenhouse, quadro: vtex, regiao: [BR, global]}
+- {nome: Wellhub, ats: greenhouse, quadro: gympass, regiao: [BR, global]}
+- {nome: Wildlife Studios, ats: greenhouse, quadro: wildlifestudios, regiao: [BR]}
+- {nome: Blip, ats: greenhouse, quadro: blip, regiao: [BR]}
+- {nome: Deuna, ats: lever, quadro: deuna, regiao: [LATAM]}
+- {nome: Simetrik, ats: ashby, quadro: simetrik, regiao: [LATAM]}
+- {nome: Yuno, ats: lever, quadro: yuno, regiao: [LATAM]}
+- {nome: SumUp, ats: greenhouse, quadro: sumup, regiao: [BR, EU]}
+
+# IA e dados
+- {nome: Anthropic, ats: greenhouse, quadro: anthropic, regiao: [global]}
+- {nome: Arize AI, ats: greenhouse, quadro: arizeai, regiao: [global]}
+- {nome: Clay Labs, ats: ashby, quadro: claylabs, regiao: [global]}
+- {nome: Cohere, ats: ashby, quadro: cohere, regiao: [global]}
+- {nome: ElevenLabs, ats: ashby, quadro: elevenlabs, regiao: [global]}
+- {nome: Glean, ats: greenhouse, quadro: gleanwork, regiao: [global]}
+- {nome: LangChain, ats: ashby, quadro: langchain, regiao: [global]}
+- {nome: Mistral AI, ats: ashby, quadro: mistral.ai, regiao: [EU, global]}
+- {nome: Perplexity, ats: ashby, quadro: perplexity, regiao: [global]}
+- {nome: Pinecone, ats: ashby, quadro: pinecone, regiao: [global]}
+
+# Empresas remotas e de produto
+- {nome: Airtable, ats: greenhouse, quadro: airtable, regiao: [global]}
+- {nome: Amplemarket, ats: greenhouse, quadro: amplemarket, regiao: [EU, global]}
+- {nome: Andela, ats: ashby, quadro: andela, regiao: [global]}
+- {nome: Automattic, ats: greenhouse, quadro: automatticcareers, regiao: [global]}
+- {nome: Bugcrowd, ats: greenhouse, quadro: bugcrowd, regiao: [global]}
+- {nome: Canonical, ats: greenhouse, quadro: canonical, regiao: [global]}
+- {nome: Doist, ats: ashby, quadro: todoist-inc, regiao: [global]}
+- {nome: GitLab, ats: greenhouse, quadro: gitlab, regiao: [global]}
+- {nome: Intercom, ats: greenhouse, quadro: intercom, regiao: [EU, global]}
+- {nome: n8n, ats: ashby, quadro: n8n, regiao: [EU, global]}
+- {nome: Spotify, ats: lever, quadro: spotify, regiao: [global]}
+- {nome: Supabase, ats: ashby, quadro: supabase, regiao: [global]}
+- {nome: Vercel, ats: greenhouse, quadro: vercel, regiao: [global]}
+- {nome: Wiz, ats: greenhouse, quadro: wizinc, regiao: [global]}
+- {nome: Zapier, ats: ashby, quadro: zapier, regiao: [global]}

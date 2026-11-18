@@ -5,7 +5,14 @@ from fastapi.responses import RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from app.ia import AguardandoResposta
-from app.web import rotas, rotas_cv, rotas_dossie, rotas_importacao, rotas_vagas
+from app.web import (
+    rotas,
+    rotas_cv,
+    rotas_dossie,
+    rotas_importacao,
+    rotas_scanner,
+    rotas_vagas,
+)
 from app.web.rotas import PASTA_STATIC
 from app.web.seguranca import ProtecaoLocal
 
@@ -27,6 +34,7 @@ def create_app() -> FastAPI:
     app.include_router(rotas_importacao.router)
     app.include_router(rotas_vagas.router)
     app.include_router(rotas_cv.router)
+    app.include_router(rotas_scanner.router)
 
     @app.exception_handler(rotas.PastaNaoConfigurada)
     async def pedir_pasta(_request: Request, _erro: rotas.PastaNaoConfigurada):

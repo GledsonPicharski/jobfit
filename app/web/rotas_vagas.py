@@ -17,8 +17,10 @@ from app.perfis.modelos import Criterios, Perfil
 from app.perfis.servico import salvar_perfil
 from app.vagas import servico
 from app.vagas.avaliacao import ACOES
+from app.vagas.catalogo import carregar_catalogo
 from app.vagas.leitura import ErroLeituraVaga, ler_entrada
 from app.vagas.metadados import MODALIDADES, NIVEIS_INGLES, SENIORIDADES
+from app.vagas.scanner import carregar_config as carregar_config_scanner
 from app.vagas.tabelas import Vaga
 from app.validacao import descrever_erro
 from app.web.formatos import ler_decimal
@@ -99,15 +101,38 @@ def salvar_criterios(
 # --- avaliar uma vaga -----------------------------------------------------------
 
 
-def _tela_vagas(request: Request, perfil: Perfil, erro: str = "", entrada: str = "", status=200):
+def _tela_vagas(
+    request: Request,
+    pasta,
+    perfil: Perfil,
+    erro: str = "",
+    entrada: str = "",
+    status=200,
+    portal: str = "",
+    todas: bool = False,
+):
     engine = banco_do_perfil(perfil.slug)
     concordancia = servico.concordancia(engine)
+    minimo = carregar_config_scanner().prenota_minima
+    novas = [v for v, _ in servico.listar_vagas(engine, novas=True, portal=portal or None)]
+    novas.sort(key=lambda v: (v.aberta is False, -(v.prenota or 0), v.id))
+    visiveis = [v for v in novas if todas or v.prenota is None or v.prenota >= minimo]
+    catalogo = carregar_catalogo(pasta)
+    origens = servico.origens_das_vagas(engine)
     return templates.TemplateResponse(
         request,
         "vagas.html",
         {
             "perfil": perfil,
-            "vagas": servico.listar_vagas(engine),
+            "vagas": servico.listar_vagas(engine, novas=False, portal=portal or None),
+            "novas": visiveis,
+            "escondidas": len(novas) - len(visiveis),
+            "prenota_minima": minimo,
+            "origens": origens,
+            "portais_vistos": sorted({o.portal for lista in origens.values() for o in lista}),
+            "nomes": {p.id: p.nome for p in catalogo.portais} | {"colada": "colada por você"},
+            "portal": portal,
+            "todas": todas,
             "lacunas": servico.lacunas_recorrentes(engine),
             "concordancia": concordancia,
             "acertos": sum(app == sua for _, app, sua in concordancia),
@@ -119,17 +144,21 @@ def _tela_vagas(request: Request, perfil: Perfil, erro: str = "", entrada: str =
 
 
 @router.get("/p/{slug}/vagas", response_class=HTMLResponse)
-def ver_vagas(request: Request, perfil: PerfilAtual):
-    return _tela_vagas(request, perfil)
+def ver_vagas(
+    request: Request, pasta: Pasta, perfil: PerfilAtual, portal: str = "", todas: bool = False
+):
+    return _tela_vagas(request, pasta, perfil, portal=portal, todas=todas)
 
 
 @router.post("/p/{slug}/vagas", response_class=HTMLResponse)
-def nova_vaga(request: Request, perfil: PerfilAtual, entrada: Annotated[str, Form()] = ""):
+def nova_vaga(
+    request: Request, pasta: Pasta, perfil: PerfilAtual, entrada: Annotated[str, Form()] = ""
+):
     """URL ou texto colado; a mesma vaga de novo abre a que já existe."""
     try:
         bruta = ler_entrada(entrada)
     except ErroLeituraVaga as erro:
-        return _tela_vagas(request, perfil, str(erro), entrada, 400)
+        return _tela_vagas(request, pasta, perfil, str(erro), entrada, 400)
     vaga, nova = servico.registrar_vaga(banco_do_perfil(perfil.slug), bruta)
     if nova:
         return ir(f"/p/{perfil.slug}/vagas/{vaga.id}/avaliar")
@@ -192,6 +221,9 @@ def _tela_vaga(
         ),
         "chamada": servico.custo_da_avaliacao(engine, avaliacao) if avaliacao else None,
         "cvs": cvs_da_vaga(engine, vaga.id),
+        "origens": servico.origens_das_vagas(engine).get(vaga.id, []),
+        "nomes": {p.id: p.nome for p in carregar_catalogo(pasta).portais}
+        | {"colada": "colada por você"},
         "TIPOS": ROTULOS_TIPO,
         "TIPO_DA_CATEGORIA": servico.TIPO_DA_CATEGORIA,
         "erro": erro,
@@ -218,9 +250,12 @@ def mudar_estado(
     perfil: PerfilAtual,
     vaga_id: int,
     estado: Annotated[Literal["avaliada", "quero_aplicar", "descartada"], Form()],
+    voltar: Annotated[str, Form()] = "",
 ):
     _vaga(perfil, vaga_id)
     servico.atualizar_vaga(banco_do_perfil(perfil.slug), vaga_id, estado=estado)
+    if voltar == "lista":  # descartar direto da lista de novas
+        return ir(f"/p/{perfil.slug}/vagas#novas")
     return ir(f"/p/{perfil.slug}/vagas/{vaga_id}")
 
 

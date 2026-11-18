@@ -1,4 +1,4 @@
-// Botões "Copiar": <button data-copiar="id-do-textarea" data-rotulo="Copiar">.
+// Ícone de copiar no canto da caixa: <button data-copiar="id-do-textarea">.
 // 127.0.0.1 é contexto seguro, então a área de transferência funciona sem HTTPS.
 document.addEventListener("click", async (evento) => {
   const botao = evento.target.closest("[data-copiar]");
@@ -6,10 +6,14 @@ document.addEventListener("click", async (evento) => {
   const alvo = document.getElementById(botao.dataset.copiar);
   try {
     await navigator.clipboard.writeText(alvo.value);
-    botao.textContent = "Copiado!";
+    botao.classList.add("copiado");
+    botao.title = "Copiado!";
   } catch {
     alvo.select();
-    botao.textContent = "Texto selecionado: use Ctrl+C";
+    botao.title = "Texto selecionado: use Ctrl+C";
   }
-  setTimeout(() => { botao.textContent = botao.dataset.rotulo; }, 2500);
+  setTimeout(() => {
+    botao.classList.remove("copiado");
+    botao.title = "Copiar";
+  }, 2000);
 });

@@ -189,9 +189,30 @@ def inicio_do_perfil(request: Request, pasta: Pasta, perfil: PerfilAtual):
             "falta_chave": perfil.ia.precisa_chave
             and not tem_chave(perfil.slug, perfil.ia.provedor),
             "pendentes": pedidos_pendentes(engine),
-            "vagas": listar_vagas(engine)[:5],
+            "vagas": listar_vagas(engine, novas=False)[:5],
+            **_resumo_do_scan(pasta, engine),
         },
     )
+
+
+def _resumo_do_scan(pasta, engine) -> dict:
+    """Vagas novas acima da pré-nota, lembretes vencidos e a última rodada do scan."""
+    from app.vagas import scanner
+    from app.vagas.catalogo import carregar_catalogo
+    from app.vagas.metricas import lembretes_vencidos
+
+    minimo = scanner.carregar_config().prenota_minima
+    novas = [
+        v
+        for v, _ in listar_vagas(engine, novas=True)
+        if v.aberta is not False and (v.prenota is None or v.prenota >= minimo)
+    ]
+    novas.sort(key=lambda v: -(v.prenota or 0))
+    return {
+        "novas": novas,
+        "lembretes": lembretes_vencidos(engine, carregar_catalogo(pasta)),
+        "varredura": scanner.ultima_varredura(engine),
+    }
 
 
 @router.get("/p/{slug}/custos", response_class=HTMLResponse)

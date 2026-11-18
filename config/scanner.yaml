@@ -1,0 +1,21 @@
+# Como o scan de portais se comporta (decisão 0009). Nada aqui chama a IA.
+
+# Pré-nota mínima (0 a 100) para uma vaga nova aparecer na lista sem "mostrar todas".
+# É uma estimativa por palavras: a nota de verdade vem da avaliação.
+prenota_minima: 30
+
+# Pausa entre requisições ao mesmo portal, em segundos.
+pausa_segundos: 1.0
+
+# Intervalo mínimo entre consultas iguais ao mesmo portal, em horas (padrão e por portal).
+intervalo_horas: 1
+intervalo_por_portal:
+  remotive: 6   # a Remotive pede no máximo 4 consultas por dia
+
+# Quantas vagas o scan reconfere por rodada (se ainda estão abertas), e de quanto em quanto tempo.
+reconferir_por_rodada: 20
+reconferir_apos_dias: 7
+
+# Vagas publicadas há mais do que isso não entram como novas. Muitas vagas ficam abertas
+# por meses (e o scan confere se ainda estão abertas): no ensaio real, 45 dias cortava demais.
+idade_maxima_dias: 90

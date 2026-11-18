@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block titulo %}Portais · {{ perfil.nome }} · JobFit{% endblock %}
+{% block conteudo %}
+<p><small><a href="/p/{{ perfil.slug }}/buscas">← Buscas</a></small></p>
+<h1>Portais</h1>
+<p>O catálogo é público e igual para todos; o que é seu (cadastro, lembretes, métricas) fica no seu
+  computador. Os portais com leitura automática entram no scan; os outros, que exigem login ou chegam
+  por e-mail, ganham um lembrete para você checar à mão.</p>
+{% if aviso %}<p class="sucesso">{{ aviso }}</p>{% endif %}
+{% if erro %}<p class="falha">{{ erro }}</p>{% endif %}
+
+<h2 id="lidos">Lidos pelo scan</h2>
+<p><small>Métricas das últimas rodadas. "Quero aplicar" é o resultado que conta até o JobFit registrar
+  candidaturas e entrevistas (Fase 5).</small></p>
+<div class="overflow-auto">
+<table>
+  <thead><tr><th>Portal</th><th>Vagas</th><th>Novas/semana</th><th>Passa nos filtros</th><th>Nota média</th><th>Quero aplicar</th><th>Encerradas</th><th></th></tr></thead>
+  <tbody>
+    {% for p in ativos %}
+    {% set m = metricas.get(p.id) %}
+    {% set desligado = registros.get(p.id) and registros[p.id].desligado %}
+    <tr{% if desligado %} class="encerrada"{% endif %}>
+      <td><a href="{{ p.url }}" target="_blank" rel="noopener noreferrer">{{ p.nome }}</a>
+        {% if p.por_empresa %}<br><small>{{ empresas | selectattr("ats", "equalto", p.id) | list | length }} empresa(s)</small>{% endif %}
+        {% if m and m.desligar %}<br><small class="falha">muita vaga, pouco resultado: vale desligar?</small>{% endif %}</td>
+      {% if m %}
+      <td>{{ m.vagas }}</td><td>{{ m.novas_por_semana }}</td>
+      <td>{% if m.passa_filtros is not none %}{{ m.passa_filtros }}%{% else %}—{% endif %}</td>
+      <td>{{ m.nota_media if m.nota_media is not none else "—" }}</td>
+      <td>{{ m.quero_aplicar }}</td>
+      <td>{% if m.encerradas is not none %}{{ m.encerradas }}%{% else %}—{% endif %}</td>
+      {% else %}<td colspan="6"><small>ainda sem vagas</small></td>{% endif %}
+      <td>
+        <form method="post" action="/p/{{ perfil.slug }}/portais/{{ p.id }}/ligar" class="em-linha">
+          {% if desligado %}<input type="hidden" name="ligado" value="true">
+          <button type="submit" class="outline pequeno">Ligar</button>
+          {% else %}<button type="submit" class="outline secondary pequeno">Desligar</button>{% endif %}
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+
+<details class="expandir">
+  <summary>Empresas acompanhadas nos sistemas de recrutamento ({{ empresas | length }})</summary>
+  <p><small>{% for e in empresas %}{{ e.nome }}{% if e.local %} (sua){% endif %}{% if not loop.last %} · {% endif %}{% endfor %}</small></p>
+</details>
+<article>
+  <header><strong>Acrescentar uma empresa</strong></header>
+  <form method="post" action="/p/{{ perfil.slug }}/portais/empresas">
+    <div class="grid">
+      <input name="nome" required placeholder="Nome da empresa" aria-label="Nome da empresa">
+      <input name="quadro" required placeholder="Link da página de vagas (Greenhouse, Lever ou Ashby)" aria-label="Link ou identificador do quadro">
+      <select name="ats" aria-label="Sistema">
+        <option value="">Sistema: pelo link</option>
+        <option value="greenhouse">Greenhouse</option>
+        <option value="lever">Lever</option>
+        <option value="ashby">Ashby</option>
+      </select>
+    </div>
+    <button type="submit" class="secondary">Conferir e acrescentar</button>
+    <small>O JobFit confere o quadro antes de salvar. Ex.: https://job-boards.greenhouse.io/vtex</small>
+  </form>
+</article>
+
+<h2 id="lembretes">Para checar à mão</h2>
+<p><small>Defina de quanto em quanto tempo quer olhar cada um; o Início avisa quando chegar a hora.</small></p>
+{% for categoria, portais in lembretes.items() %}
+<details class="expandir" {% if portais | selectattr("id", "in", vencidos) | list %}open{% endif %}>
+  <summary>{{ CATEGORIAS[categoria] }} ({{ portais | length }})</summary>
+  {% for p in portais %}
+  {% set r = registros.get(p.id) %}
+  <div class="portal-lembrete" id="portal-{{ p.id }}">
+    <strong>{% if p.url %}<a href="{{ p.url }}" target="_blank" rel="noopener noreferrer">{{ p.nome }}</a>{% else %}{{ p.nome }}{% endif %}</strong>
+    <small>· {{ MODOS[p.modo_leitura] }}{% if p.foco %} · {{ p.foco }}{% endif %}
+      {% if r and r.ultima_checagem %} · checado em {{ r.ultima_checagem | hora }}{% endif %}
+      {% if p.id in vencidos %} · <strong>hora de checar</strong>{% endif %}</small>
+    <form method="post" action="/p/{{ perfil.slug }}/portais/{{ p.id }}/lembrete" class="grid">
+      <select name="cadastro" aria-label="Cadastro">
+        <option value="">Cadastro?</option>
+        <option value="sem_conta" {% if r and r.cadastro == "sem_conta" %}selected{% endif %}>Sem conta</option>
+        <option value="cadastrado" {% if r and r.cadastro == "cadastrado" %}selected{% endif %}>Cadastrado</option>
+      </select>
+      <input name="frequencia_dias" inputmode="numeric" placeholder="Lembrar a cada … dias" aria-label="Frequência em dias"
+             value="{{ r.frequencia_dias if r and r.frequencia_dias else (p.frequencia_dias or '') }}">
+      <input name="observacoes" placeholder="Observações" aria-label="Observações" value="{{ r.observacoes if r and r.observacoes else '' }}">
+      <button type="submit" class="outline secondary pequeno">Salvar</button>
+    </form>
+    <form method="post" action="/p/{{ perfil.slug }}/portais/{{ p.id }}/checado" class="em-linha">
+      <button type="submit" class="outline pequeno">Marquei como checado</button>
+    </form>
+  </div>
+  {% endfor %}
+</details>
+{% endfor %}
+
+<article>
+  <header><strong>Acrescentar um portal para checar à mão</strong></header>
+  <form method="post" action="/p/{{ perfil.slug }}/portais/novo">
+    <div class="grid">
+      <input name="nome" required placeholder="Nome do portal" aria-label="Nome do portal">
+      <input name="url" placeholder="https://…" aria-label="Endereço">
+      <select name="categoria" aria-label="Categoria">
+        {% for valor, rotulo in CATEGORIAS.items() %}<option value="{{ valor }}">{{ rotulo }}</option>{% endfor %}
+      </select>
+      <input name="frequencia_dias" inputmode="numeric" value="7" aria-label="Lembrar a cada quantos dias">
+    </div>
+    <button type="submit" class="secondary">Acrescentar</button>
+  </form>
+</article>
+
+<details class="expandir">
+  <summary>Em validação e descartados ({{ outros | length }})</summary>
+  <ul>
+    {% for p in outros %}
+    <li><strong>{{ p.nome }}</strong> <small>· {{ "descartado" if p.status == "descartado" else "em validação" }}{% if p.motivo_descarte %}: {{ p.motivo_descarte }}{% endif %}</small></li>
+    {% endfor %}
+  </ul>
+</details>
+{% endblock %}

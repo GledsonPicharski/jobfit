@@ -27,10 +27,15 @@ from app.vagas.filtros import ResultadoFiltros, aplicar_filtros
 from app.vagas.leitura import VagaBruta
 from app.vagas.metadados import Metadados, Salario, extrair_metadados, nivel_ingles_declarado
 from app.vagas.nota import Item, calcular_nota, carregar_config
-from app.vagas.tabelas import Ajuste, Avaliacao, Vaga
+from app.vagas.tabelas import Ajuste, Avaliacao, Vaga, VagaOrigem
 from app.validacao import descrever_erro
 
-ESTADOS = {"avaliada": "Avaliada", "quero_aplicar": "Quero aplicar", "descartada": "Descartada"}
+ESTADOS = {
+    "nova": "Nova",
+    "avaliada": "Avaliada",
+    "quero_aplicar": "Quero aplicar",
+    "descartada": "Descartada",
+}
 # O que cada faixa quer dizer, para quem lê a tela (os cortes ficam em config/avaliacao.yaml).
 FAIXAS = {"A": "combina muito", "B": "combina bem", "C": "combina pouco", "D": "não combina"}
 
@@ -47,6 +52,27 @@ def hash_texto(texto: str) -> str:
 # --- vagas ----------------------------------------------------------------------
 
 
+def nova_vaga(bruta: VagaBruta, meta: Metadados | None = None, **campos) -> Vaga:
+    """A vaga como vai para o banco, colada pela pessoa ou trazida pelo scan."""
+    meta = meta or extrair_metadados(bruta.texto, bruta.estruturado)
+    salario = meta.salario
+    return Vaga(
+        url=bruta.url,
+        fonte=bruta.fonte,
+        titulo=meta.titulo,
+        empresa=meta.empresa,
+        local=meta.local,
+        modalidade=meta.modalidade,
+        senioridade=meta.senioridade,
+        idioma=meta.idioma,
+        ingles=meta.ingles,
+        salario=json.dumps({k: str(v) for k, v in asdict(salario).items()}) if salario else None,
+        texto=bruta.texto,
+        hash_texto=hash_texto(bruta.texto),
+        **campos,
+    )
+
+
 def registrar_vaga(engine: Engine, bruta: VagaBruta) -> tuple[Vaga, bool]:
     """A vaga e se ela é nova; a mesma URL ou o mesmo texto reabrem a que já existe."""
     hash_ = hash_texto(bruta.texto)
@@ -56,25 +82,10 @@ def registrar_vaga(engine: Engine, bruta: VagaBruta) -> tuple[Vaga, bool]:
             consulta = select(Vaga).where((Vaga.url == bruta.url) | (Vaga.hash_texto == hash_))
         if existente := sessao.exec(consulta).first():
             return existente, False
-        meta = extrair_metadados(bruta.texto, bruta.estruturado)
-        salario = meta.salario
-        vaga = Vaga(
-            url=bruta.url,
-            fonte=bruta.fonte,
-            titulo=meta.titulo,
-            empresa=meta.empresa,
-            local=meta.local,
-            modalidade=meta.modalidade,
-            senioridade=meta.senioridade,
-            idioma=meta.idioma,
-            ingles=meta.ingles,
-            salario=json.dumps({k: str(v) for k, v in asdict(salario).items()})
-            if salario
-            else None,
-            texto=bruta.texto,
-            hash_texto=hash_,
-        )
+        vaga = nova_vaga(bruta)
         sessao.add(vaga)
+        sessao.flush()
+        sessao.add(VagaOrigem(vaga_id=vaga.id, portal="colada", url=bruta.url))
         sessao.commit()
         return vaga, True
 
@@ -204,6 +215,8 @@ async def avaliar(
     with Session(engine, expire_on_commit=False) as sessao:
         sessao.add(avaliacao)
         sessao.commit()
+    if vaga.estado == "nova":  # trazida pelo scan: avaliada agora
+        atualizar_vaga(engine, vaga.id, estado="avaliada")
     return recalcular(engine, avaliacao.id)
 
 
@@ -280,10 +293,29 @@ def custo_da_avaliacao(engine: Engine, avaliacao: Avaliacao) -> ChamadaIA | None
         return sessao.get(ChamadaIA, avaliacao.chamada_id)
 
 
-def listar_vagas(engine: Engine) -> list[tuple[Vaga, Avaliacao | None]]:
+def listar_vagas(
+    engine: Engine, *, novas: bool | None = None, portal: str | None = None
+) -> list[tuple[Vaga, Avaliacao | None]]:
+    """Todas as vagas, ou só as novas do scan (`novas=True`) ou só as outras (`False`)."""
+    consulta = select(Vaga).order_by(Vaga.criado_em.desc(), Vaga.id.desc())
+    if novas is not None:
+        consulta = consulta.where((Vaga.estado == "nova") == novas)
+    if portal:
+        da_origem = select(VagaOrigem.vaga_id).where(VagaOrigem.portal == portal)
+        consulta = consulta.where(Vaga.id.in_(da_origem))
     with Session(engine, expire_on_commit=False) as sessao:
-        vagas = list(sessao.exec(select(Vaga).order_by(Vaga.criado_em.desc(), Vaga.id.desc())))
+        vagas = list(sessao.exec(consulta))
     return [(v, ultima_avaliacao(engine, v.id)) for v in vagas]
+
+
+def origens_das_vagas(engine: Engine) -> dict[int, list[VagaOrigem]]:
+    """Onde cada vaga foi vista, da primeira origem para a última."""
+    with Session(engine, expire_on_commit=False) as sessao:
+        consulta = select(VagaOrigem).order_by(VagaOrigem.primeira_vez, VagaOrigem.id)
+        origens: dict[int, list[VagaOrigem]] = {}
+        for origem in sessao.exec(consulta):
+            origens.setdefault(origem.vaga_id, []).append(origem)
+    return origens
 
 
 # --- feedback que volta para o dossiê (decisão 0005) ------------------------------

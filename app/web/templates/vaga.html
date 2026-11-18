@@ -71,14 +71,17 @@
 {% set segundo = "pt" if primeiro == "en" else "en" %}
 {% macro acoes_vaga() %}
 <div class="acoes-importacao acoes-vaga">
+  {% if not avaliacao and not erro %}
+  <a href="/p/{{ perfil.slug }}/vagas/{{ vaga.id }}/avaliar" role="button">Avaliar</a>
+  {% endif %}
   {% if com_cv %}
   <a href="/p/{{ perfil.slug }}/vagas/{{ vaga.id }}/cv?idioma={{ primeiro }}" role="button">Gerar CV em {{ "inglês" if primeiro == "en" else "português" }}</a>
   <a href="/p/{{ perfil.slug }}/vagas/{{ vaga.id }}/cv?idioma={{ segundo }}" role="button" class="outline secondary">em {{ "inglês" if segundo == "en" else "português" }}</a>
   {% endif %}
-  {% for estado, rotulo in ESTADOS_VAGA.items() if estado != vaga.estado %}
+  {% for estado, rotulo in ESTADOS_VAGA.items() if estado not in (vaga.estado, "nova") %}
   <form method="post" action="/p/{{ perfil.slug }}/vagas/{{ vaga.id }}/estado">
     <input type="hidden" name="estado" value="{{ estado }}">
-    <button type="submit" class="{% if estado != 'quero_aplicar' or com_cv %}outline secondary{% endif %}">{{ rotulo }}</button>
+    <button type="submit" class="{% if estado != 'quero_aplicar' or com_cv or not avaliacao %}outline secondary{% endif %}">{{ rotulo }}</button>
   </form>
   {% endfor %}
 </div>
@@ -92,7 +95,12 @@
   {% if meta.senioridade %}{{ SENIORIDADES[meta.senioridade] }} · {% endif %}
   {% if meta.ingles %}inglês {{ NIVEIS_INGLES[meta.ingles] }} · {% endif %}
   {% if vaga.url %}<a href="{{ vaga.url }}" target="_blank" rel="noopener noreferrer">abrir a vaga</a>{% else %}texto colado{% endif %}
+  {% if origens %}<br><small>Vista em: {% for o in origens %}{% if o.url and o.portal != "colada" %}<a href="{{ o.url }}" target="_blank" rel="noopener noreferrer">{{ nomes.get(o.portal, o.portal) }}</a>{% else %}{{ nomes.get(o.portal, o.portal) }}{% endif %}{% if not loop.last %}, {% endif %}{% endfor %}
+    {% if vaga.publicada_em %} · publicada {{ vaga.publicada_em | hora }}{% endif %}
+    {% if vaga.estado == "nova" and vaga.prenota is not none %} · pré-nota {{ vaga.prenota }} (estimativa por palavras){% endif %}</small>{% endif %}
 </p>
+{% if vaga.aberta is false %}<article class="aviso">Esta vaga foi encerrada no portal{% if vaga.encerrada_em %} (visto em {{ vaga.encerrada_em | hora }}){% endif %}.
+  A cópia continua aqui, para o CV e a preparação de entrevista.</article>{% endif %}
 {{ acoes_vaga() }}
 
 {% if adicionado %}<article class="aviso sucesso-caixa">Adicionado ao dossiê como
@@ -111,10 +119,6 @@
   <a href="/p/{{ perfil.slug }}/vagas/{{ vaga.id }}/avaliar?forcar=1" role="button" class="secondary">Avaliar mesmo assim</a>
   {% endif %}
 </article>
-{% endif %}
-
-{% if not avaliacao and not erro %}
-<a href="/p/{{ perfil.slug }}/vagas/{{ vaga.id }}/avaliar" role="button">Avaliar</a>
 {% endif %}
 
 {% if avaliacao and not avaliacao.bloqueada %}
@@ -177,11 +181,11 @@
 </article>
 {% endif %}
 
-{{ acoes_vaga() }}
+{% if avaliacao %}{{ acoes_vaga() }}{% endif %}
 <p><small>Situação: {{ ESTADOS_VAGA.get(vaga.estado, vaga.estado) }}
   {% if com_cv %} · o CV usa só fatos confirmados e sem 🔒 do dossiê; cada frase é conferida antes do PDF{% endif %}</small></p>
 
-<details class="expandir">
+<details class="expandir" open>
   <summary>Descrição completa da vaga</summary>
   <pre class="texto-vaga">{{ vaga.texto }}</pre>
   <small>Cópia guardada em {{ vaga.criado_em | hora }}: continua aqui mesmo se a vaga sair do ar.</small>

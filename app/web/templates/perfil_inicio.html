@@ -43,6 +43,40 @@
   {% endif %}
 </article>
 
+{% if novas or lembretes or varredura %}
+<article>
+  <header><strong>Vagas novas e portais</strong></header>
+  {% if novas %}
+  <p><strong>{{ novas | length }} vaga(s) nova(s)</strong> esperando você decidir se avalia:</p>
+  <ul>
+    {% for vaga in novas[:5] %}
+    <li><a href="/p/{{ perfil.slug }}/vagas/{{ vaga.id }}">{{ vaga.titulo or "Vaga sem título" }}</a>
+      {% if vaga.empresa %}<small>· {{ vaga.empresa }}</small>{% endif %}
+      {% if vaga.prenota is not none %}<small>· pré-nota {{ vaga.prenota }}</small>{% endif %}</li>
+    {% endfor %}
+  </ul>
+  <a href="/p/{{ perfil.slug }}/vagas#novas">Ver as novas</a>
+  {% elif varredura %}
+  <p><small>Nenhuma vaga nova esperando.</small></p>
+  {% endif %}
+  {% if varredura %}<p><small>Último scan: {{ varredura.inicio | hora }} ·
+    <a href="/p/{{ perfil.slug }}/buscas">Buscas</a></small></p>{% endif %}
+  {% if lembretes %}
+  <p><strong>Hora de checar</strong> {{ lembretes | length }} portal(is) à mão:</p>
+  <ul>
+    {% for portal, registro in lembretes %}
+    <li>{% if portal.url %}<a href="{{ portal.url }}" target="_blank" rel="noopener noreferrer">{{ portal.nome }}</a>{% else %}{{ portal.nome }}{% endif %}
+      {% if registro.ultima_checagem %}<small>· checado em {{ registro.ultima_checagem | hora }}</small>{% endif %}
+      <form method="post" action="/p/{{ perfil.slug }}/portais/{{ portal.id }}/checado" class="em-linha">
+        <input type="hidden" name="voltar" value="inicio">
+        <button type="submit" class="outline pequeno">Marquei como checado</button>
+      </form></li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+</article>
+{% endif %}
+
 <article>
   <header><strong>Vagas</strong></header>
   <form method="post" action="/p/{{ perfil.slug }}/vagas">

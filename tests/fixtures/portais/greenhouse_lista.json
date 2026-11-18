@@ -1,0 +1,124 @@
+{
+ "jobs": [
+  {
+   "absolute_url": "https://job-boards.greenhouse.io/vtex/jobs/6100504004",
+   "data_compliance": [
+    {
+     "type": "gdpr",
+     "requires_consent": false,
+     "requires_processing_consent": false,
+     "requires_retention_consent": false,
+     "retention_period": null,
+     "demographic_data_consent_applies": true
+    }
+   ],
+   "internal_job_id": 5178261004,
+   "location": {
+    "name": "Rio de Janeiro; São Paulo, Sao Paulo, Brazil"
+   },
+   "metadata": [
+    {
+     "id": 4382224004,
+     "name": "Management Level",
+     "value": "Junior",
+     "value_type": "single_select"
+    },
+    {
+     "id": 4568065004,
+     "name": "Job Emphasis",
+     "value": "Product Support",
+     "value_type": "single_select"
+    }
+   ],
+   "id": 6100504004,
+   "updated_at": "2026-10-28T13:46:24-04:00",
+   "requisition_id": "2141",
+   "title": "Analista Administrativo Tech (Exclusivo para pessoas com deficiência)",
+   "company_name": "VTEX",
+   "first_published": "2026-08-05T10:06:06-04:00",
+   "language": "en",
+   "application_deadline": null
+  },
+  {
+   "absolute_url": "https://job-boards.greenhouse.io/vtex/jobs/6218060004",
+   "data_compliance": [
+    {
+     "type": "gdpr",
+     "requires_consent": false,
+     "requires_processing_consent": false,
+     "requires_retention_consent": false,
+     "retention_period": null,
+     "demographic_data_consent_applies": true
+    }
+   ],
+   "internal_job_id": 4973801004,
+   "location": {
+    "name": "Brazil"
+   },
+   "metadata": [
+    {
+     "id": 4382224004,
+     "name": "Management Level",
+     "value": "Mid-Level",
+     "value_type": "single_select"
+    },
+    {
+     "id": 4568065004,
+     "name": "Job Emphasis",
+     "value": "Data",
+     "value_type": "single_select"
+    }
+   ],
+   "id": 6218060004,
+   "updated_at": "2026-10-27T08:52:14-04:00",
+   "requisition_id": "1967",
+   "title": "Analytics Engineer - Campaign Intelligence [Ads]",
+   "company_name": "VTEX",
+   "first_published": "2026-10-06T08:59:45-04:00",
+   "language": "en",
+   "application_deadline": null
+  },
+  {
+   "absolute_url": "https://job-boards.greenhouse.io/vtex/jobs/6131839004",
+   "data_compliance": [
+    {
+     "type": "gdpr",
+     "requires_consent": false,
+     "requires_processing_consent": false,
+     "requires_retention_consent": false,
+     "retention_period": null,
+     "demographic_data_consent_applies": true
+    }
+   ],
+   "internal_job_id": 5194343004,
+   "location": {
+    "name": "Brazil"
+   },
+   "metadata": [
+    {
+     "id": 4382224004,
+     "name": "Management Level",
+     "value": "Senior",
+     "value_type": "single_select"
+    },
+    {
+     "id": 4568065004,
+     "name": "Job Emphasis",
+     "value": null,
+     "value_type": "single_select"
+    }
+   ],
+   "id": 6131839004,
+   "updated_at": "2026-10-27T08:52:14-04:00",
+   "requisition_id": "2172",
+   "title": "Associate Field Software Engineer",
+   "company_name": "VTEX",
+   "first_published": "2026-07-31T10:40:28-04:00",
+   "language": "pt",
+   "application_deadline": null
+  }
+ ],
+ "meta": {
+  "total": 3
+ }
+}

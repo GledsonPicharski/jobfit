@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block titulo %}{{ nome or "Nova busca" }} · {{ perfil.nome }} · JobFit{% endblock %}
+{% block conteudo %}
+<p><small><a href="/p/{{ perfil.slug }}/buscas">← Buscas</a></small></p>
+<h1>{{ nome or "Nova busca" }}</h1>
+<p>Os filtros rodam em código, antes de qualquer IA, junto com os seus
+  <a href="/p/{{ perfil.slug }}/criterios">critérios de vaga</a>. Campo vazio quer dizer "qualquer um".</p>
+{% if erro %}<p class="falha">{{ erro }}</p>{% endif %}
+
+<form method="post" action="/p/{{ perfil.slug }}/buscas{% if busca %}/{{ busca.id }}{% endif %}">
+  <label>Nome da busca
+    <input name="nome" required value="{{ nome }}" placeholder="Ex.: Dados e IA, remoto">
+  </label>
+  <label>Títulos de vaga (até 5, um por linha)
+    <textarea name="titulos" rows="5" required placeholder="Gerente de Dados&#10;Head of Data&#10;Data Manager">{{ f.titulos | join("\n") if f else "" }}</textarea>
+    <small>A vaga entra se o título dela tiver todas as palavras de um destes, em qualquer ordem. Escreva em português e em inglês.</small>
+  </label>
+
+  <fieldset>
+    <label><input type="checkbox" name="so_remoto" value="true" {% if not f or f.so_remoto %}checked{% endif %}> Só vagas remotas</label>
+  </fieldset>
+  <label>Países onde você pode trabalhar
+    <textarea name="paises" rows="2" placeholder="Brasil">{{ f.paises | join("\n") if f else "Brasil" }}</textarea>
+    <small>Barra vagas remotas restritas a outros lugares (ex.: "só Estados Unidos"). "Brasil" aceita também LATAM, América Latina e Worldwide.</small>
+  </label>
+
+  <fieldset>
+    <legend>Senioridades <small>(fora delas, a vaga é barrada; vazio: qualquer)</small></legend>
+    {% for valor, rotulo in SENIORIDADES.items() %}
+    <label><input type="checkbox" name="senioridades" value="{{ valor }}" {% if f and valor in f.senioridades %}checked{% endif %}> {{ rotulo }}</label>
+    {% endfor %}
+  </fieldset>
+
+  <label>Salário mínimo mensal, em reais
+    <input name="salario_minimo" inputmode="numeric" value="{{ f.salario_minimo if f and f.salario_minimo else '' }}">
+    <small>Privado: fica no seu computador e nunca vai para a IA. Só barra vagas que informam salário em reais.</small>
+  </label>
+
+  <div class="grid">
+    <label>Empresas a excluir
+      <textarea name="empresas_excluidas" rows="3" placeholder="Uma por linha">{{ f.empresas_excluidas | join("\n") if f else "" }}</textarea>
+    </label>
+    <label>Setores a excluir
+      <textarea name="setores_excluidos" rows="3" placeholder="Ex.: mercado imobiliário">{{ f.setores_excluidos | join("\n") if f else "" }}</textarea>
+    </label>
+  </div>
+  <div class="grid">
+    <label>Palavras obrigatórias na descrição
+      <textarea name="palavras_obrigatorias" rows="2" placeholder="Todas precisam aparecer">{{ f.palavras_obrigatorias | join("\n") if f else "" }}</textarea>
+    </label>
+    <label>Palavras proibidas na descrição
+      <textarea name="palavras_proibidas" rows="2" placeholder="Qualquer uma barra a vaga">{{ f.palavras_proibidas | join("\n") if f else "" }}</textarea>
+    </label>
+  </div>
+
+  <fieldset>
+    <legend>Portais <small>(nenhum marcado: todos os ativos)</small></legend>
+    {% for p in portais %}
+    <label><input type="checkbox" name="portais" value="{{ p.id }}" {% if f and p.id in f.portais %}checked{% endif %}> {{ p.nome }}{% if p.por_empresa %} <small>(empresas da lista)</small>{% endif %}</label>
+    {% endfor %}
+  </fieldset>
+
+  <fieldset>
+    <label><input type="checkbox" name="ativa" value="true" {% if ativa %}checked{% endif %}> Ativa <small>(desmarque para pausar sem apagar)</small></label>
+  </fieldset>
+  <button type="submit">Salvar busca</button>
+</form>
+
+{% if busca %}
+<form method="post" action="/p/{{ perfil.slug }}/buscas/{{ busca.id }}/excluir">
+  <button type="submit" class="outline secondary pequeno">Apagar busca</button>
+  <small>As vagas que ela trouxe continuam em Vagas.</small>
+</form>
+{% endif %}
+{% endblock %}

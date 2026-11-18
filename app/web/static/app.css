@@ -70,7 +70,7 @@ details.tenho[open] { padding: 0.5rem 0.75rem; border: 1px solid var(--pico-mute
 .acoes-requisito { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.75rem; }
 .acoes-requisito form.em-linha button { margin: 0; }
 .acoes-vaga { margin: 0.5rem 0 1.25rem; }
-.acoes-vaga form button, .acoes-vaga a[role="button"] { margin: 0; }
+.acoes-vaga form button, .acoes-vaga a[role="button"] { margin: 0; padding: 0.3rem 0.8rem; font-size: 0.9rem; width: auto; }
 article.faixa-esperada form { display: flex; gap: 0.5rem; flex-wrap: wrap; margin: 0 0 0.5rem; }
 article.faixa-esperada button { margin: 0; width: auto; }
 .frase-cv { margin-bottom: 0.6rem; }
@@ -80,3 +80,24 @@ article.faixa-esperada button { margin: 0; width: auto; }
 .experiencia-cv { margin: 1rem 0; padding-left: 0.75rem; border-left: 3px solid var(--pico-muted-border-color); }
 .experiencia-cv > input { font-weight: 700; margin-bottom: 0.15rem; }
 .cv-cabecalho { margin-bottom: 1rem; }
+/* Scanner: vagas novas, filtro por portal e vagas encerradas. */
+.filtro-portal { max-width: 22rem; margin-bottom: 1rem; }
+.filtro-portal select { margin: 0; }
+td.acoes-linha { white-space: nowrap; }
+td.acoes-linha a[role="button"], td.acoes-linha form button { margin: 0 0.25rem 0 0; }
+tr.encerrada td { opacity: 0.6; }
+.portal-lembrete { padding: 0.5rem 0; border-bottom: 1px solid var(--pico-muted-border-color); }
+.portal-lembrete form { margin: 0.35rem 0 0; }
+.portal-lembrete form input, .portal-lembrete form select { margin-bottom: 0.25rem; }
+article.caminho h2 { margin-bottom: 0.5rem; }
+article.caminho h3 { font-size: 1rem; margin: 1.25rem 0 0.4rem; }
+.caixa-copiar { position: relative; }
+.caixa-copiar textarea { padding-right: 2.75rem; margin-bottom: 0.25rem; font-family: var(--pico-font-family-monospace); font-size: 0.85rem; }
+.caixa-copiar button.icone-copiar {
+  position: absolute; top: 0.4rem; right: 0.4rem; width: auto; margin: 0;
+  padding: 0.35rem; line-height: 0; border: none; border-radius: 0.375rem;
+  background: transparent; color: var(--pico-muted-color); box-shadow: none;
+}
+.caixa-copiar button.icone-copiar:hover, .caixa-copiar button.icone-copiar:focus-visible { color: var(--pico-h1-color); background: rgba(127, 127, 127, 0.15); }
+.caixa-copiar .so-copiado, .caixa-copiar .copiado .so-copiar { display: none; }
+.caixa-copiar .copiado .so-copiado { display: inline; color: var(--pico-ins-color); }
