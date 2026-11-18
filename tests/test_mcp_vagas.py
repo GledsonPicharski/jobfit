@@ -138,7 +138,7 @@ async def test_tela_do_pedido_avisa_e_segue_quando_o_claude_responde(pasta_dados
     assert "Pelo Claude Desktop" not in cliente.get(destino).text  # ainda não conectado
     instalar(Path(os.environ["JOBFIT_CLAUDE_CONFIG"]), "ana")
     tela = cliente.get(destino).text
-    assert f"responda o pedido {pedido_id} do JobFit" in tela and 'hx-trigger="every 3s"' in tela
+    assert f"Abra o pedido {pedido_id} do JobFit" in tela and 'hx-trigger="every 3s"' in tela
 
     pendente = cliente.get(estado)
     assert pendente.status_code == 204 and "HX-Redirect" not in pendente.headers

@@ -57,7 +57,7 @@ Quem tem o Claude Desktop pode pular o copiar e colar:
 2. Feche o Claude Desktop, inclusive o ícone na bandeja perto do relógio, e abra de novo.
 3. No Claude, peça, por exemplo: "avalie esta vaga no JobFit: <link ou texto>" ou "gere o CV em inglês dessa vaga".
 
-O Claude faz a parte de IA pela sua assinatura, e o JobFit confere tudo como no modo manual. A nota sai do código, e cada frase do CV é checada contra o dossiê. Ajustes no dossiê e o PDF do CV continuam no app. Um pedido aberto na tela também pode ser respondido pelo Claude Desktop ("responda o pedido P-XXXX do JobFit"), e a tela segue sozinha. Pela linha de comando: `uv run jobfit mcp instalar` e `uv run jobfit mcp remover`.
+O Claude faz a parte de IA pela sua assinatura, e o JobFit confere tudo como no modo manual. A nota sai do código, e cada frase do CV é checada contra o dossiê. Ajustes no dossiê e o PDF do CV continuam no app. Um pedido aberto na tela também pode ser respondido pelo Claude Desktop ("abra o pedido P-XXXX do JobFit"; a tela de cada pedido traz a frase pronta para copiar), e a tela segue sozinha. Pela linha de comando: `uv run jobfit mcp instalar` e `uv run jobfit mcp remover`.
 
 ### Buscar vagas nos portais
 

@@ -243,7 +243,8 @@ def test_ciclo_manual_completo(cliente, ana):
     pedido_id = _gerar_pedido_de_teste(cliente)
 
     tela = cliente.get(f"/p/ana-exemplo/pedidos/{pedido_id}").text
-    assert f"Pedido JobFit {pedido_id}" in tela
+    assert 'class="icone-copiar" data-copiar="pacote"' in tela
+    assert "Responder com um chat de IA" in tela and "frase-claude" not in tela
     assert "dados_jobfit" in tela
     assert "Copiar" in tela
 
