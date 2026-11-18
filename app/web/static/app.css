@@ -70,7 +70,7 @@ details.tenho[open] { padding: 0.5rem 0.75rem; border: 1px solid var(--pico-mute
 .acoes-requisito { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.75rem; }
 .acoes-requisito form.em-linha button { margin: 0; }
 .acoes-vaga { margin: 0.5rem 0 1.25rem; }
-.acoes-vaga form button, .acoes-vaga a[role="button"] { margin: 0; }
+.acoes-vaga form button, .acoes-vaga a[role="button"] { margin: 0; padding: 0.3rem 0.8rem; font-size: 0.9rem; width: auto; }
 article.faixa-esperada form { display: flex; gap: 0.5rem; flex-wrap: wrap; margin: 0 0 0.5rem; }
 article.faixa-esperada button { margin: 0; width: auto; }
 .frase-cv { margin-bottom: 0.6rem; }

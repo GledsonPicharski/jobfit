@@ -162,6 +162,15 @@ def test_pagina_da_vaga_mostra_origem_e_encerrada(cliente, ana):
     assert ">Nova<" not in tela  # "nova" não é um botão de estado
 
 
+def test_vaga_sem_avaliacao_tem_uma_fileira_de_botoes_e_descricao_aberta(cliente, ana):
+    vaga_id = _nova(banco_do_perfil("ana"), "Head of Data", 80)
+    tela = cliente.get(f"/p/ana/vagas/{vaga_id}").text
+    assert tela.count('class="acoes-importacao acoes-vaga"') == 1
+    assert tela.count(">Quero aplicar<") == 1
+    assert tela.index(">Avaliar<") < tela.index(">Quero aplicar<")
+    assert '<details class="expandir" open>' in tela
+
+
 def test_menu_tem_buscas_e_portais(cliente, ana):
     tela = cliente.get("/p/ana").text
     assert "/p/ana/buscas" in tela and "/p/ana/portais" in tela
